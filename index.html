@@ -6,9 +6,10 @@
     <meta name="description" content="Sistema de Gestión Patrimonial TIC - MIDIS 2026">
     <meta name="referrer" content="no-referrer">
     <title>Sistema de Gestión Patrimonial TIC - MIDIS 2026</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23881337'/%3E%3Ctext x='50' y='68' font-size='60' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="window.__XLSX_FAILED__=true"></script>
     <style>
     :root {
         --primary: #881337;
@@ -65,14 +66,40 @@
     .login-right-pane { background: #ffffff; padding: 40px 35px; display: flex; flex-direction: column; justify-content: center; }
     .login-right-pane h2 { font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
     .login-right-pane p.login-subtitle { font-size: 12.5px; color: #64748b; margin-bottom: 24px; line-height: 1.4; }
-    .login-form-group { margin-bottom: 16px; }
+    .login-form-group { margin-bottom: 16px; position: relative; }
     .login-form-group label { display: block; font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase; }
-    .login-input { width: 100%; padding: 11px 14px; font-size: 16px; border: 1.5px solid #cbd5e1; border-radius: 8px; outline: none; background: #f8fafc; transition: var(--transition); }
+    .login-input { width: 100%; padding: 11px 40px 11px 14px; font-size: 16px; border: 1.5px solid #cbd5e1; border-radius: 8px; outline: none; background: #f8fafc; transition: var(--transition); }
     .login-input:focus { border-color: #e11d48; background: #fff; box-shadow: 0 0 0 3px rgba(225,29,72,0.12); }
+    .toggle-pass-btn {
+        position: absolute; right: 10px; bottom: 8px; background: none; border: none;
+        cursor: pointer; font-size: 18px; color: #64748b; padding: 4px 6px;
+        border-radius: 4px; transition: var(--transition);
+    }
+    .toggle-pass-btn:hover { color: #e11d48; background: #fff1f2; }
     .login-submit-btn { width: 100%; padding: 12px; background: #e11d48; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: var(--transition); margin-top: 10px; box-shadow: 0 4px 12px rgba(225,29,72,0.25); }
     .login-submit-btn:hover { background: #be123c; transform: translateY(-1px); }
     .login-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
     .login-error-msg { font-size: 11.5px; color: #b91c1c; margin-top: 10px; min-height: 16px; font-weight: 600; }
+
+    /* Modal cambio de contraseña */
+    .modal-generic {
+        position: fixed; inset: 0; background: rgba(15,23,42,0.6);
+        backdrop-filter: blur(3px); z-index: 100000;
+        display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-box {
+        background: #fff; border-radius: var(--radius-lg); padding: 26px;
+        max-width: 440px; width: 100%; box-shadow: 0 25px 70px rgba(0,0,0,.35);
+        animation: fadeInLogin 0.3s ease; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-box h3 { font-size: 16px; font-weight: 800; color: #881337; margin-bottom: 6px; }
+    .modal-box p { font-size: 12.5px; color: #64748b; margin-bottom: 18px; line-height: 1.5; }
+    .modal-box .field-group { margin-bottom: 14px; position: relative; }
+    .modal-box .field-group label { display: block; font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 5px; text-transform: uppercase; }
+    .modal-box .field-group input { width: 100%; padding: 10px 40px 10px 12px; font-size: 15px; border: 1.5px solid #cbd5e1; border-radius: 6px; outline: none; font-weight: 600; }
+    .modal-box .field-group input:focus { border-color: #e11d48; box-shadow: 0 0 0 3px rgba(225,29,72,0.10); }
+    .modal-box .toggle-pass-btn { bottom: 6px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
 
     /* =========================================================
        HEADER
@@ -224,6 +251,15 @@
     }
     .input-control:focus { border-color: #e11d48; box-shadow: 0 0 0 3px rgba(225,29,72,0.10); }
     .input-control:disabled { background: #f8fafc; color: #64748b; cursor: not-allowed; }
+
+    /* Banner solo lectura */
+    .read-only-banner {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+        border: 1.5px solid #60a5fa; border-left: 5px solid #2563eb;
+        color: #1e40af; padding: 10px 16px; border-radius: var(--radius-md);
+        font-size: 12px; font-weight: 700; margin-bottom: 14px;
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
 
     /* =========================================================
        MÓDULO 2: TABLA EN PANTALLA
@@ -384,17 +420,31 @@
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Indicador de carga */
+    .loading-overlay-m2 {
+        position: fixed; inset: 0; background: rgba(255,255,255,0.75);
+        z-index: 9997; display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 14px; font-weight: 700; color: #881337;
+    }
+    .loading-overlay-m2 .spinner-big {
+        width: 48px; height: 48px; border: 4px solid #fecdd3; border-top-color: #e11d48;
+        border-radius: 50%; animation: spin 0.9s linear infinite;
+    }
+
+    /* Botón eliminar fila acta */
+    .btn-del-row {
+        background: none; border: none; color: #dc2626; cursor: pointer;
+        font-size: 14px; font-weight: 800; padding: 2px 6px; border-radius: 4px;
+    }
+    .btn-del-row:hover { background: #fee2e2; }
+
     /* =========================================================
-       BREAKPOINT 1200px — Tablets horizontales
+       BREAKPOINTS
     ========================================================= */
     @media (max-width: 1200px) {
         .analytics-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
         .reporte-a4-documento { width: 100%; max-width: 210mm; }
     }
-
-    /* =========================================================
-       BREAKPOINT 900px — Tablets verticales
-    ========================================================= */
     @media (max-width: 900px) {
         .two-columns-vertical { grid-template-columns: 1fr; gap: 12px; }
         .stat-grid-colored { grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -403,14 +453,8 @@
         .person-horizontal-bar { grid-template-columns: repeat(2, 1fr); }
         .reporte-a4-documento { padding: 14mm 16mm; }
     }
-
-    /* =========================================================
-       BREAKPOINT 768px — Móviles grandes
-    ========================================================= */
     @media (max-width: 768px) {
         body { padding: 4px; }
-
-        /* Login */
         .login-card-container { grid-template-columns: 1fr; max-width: 100%; }
         .login-left-pane { padding: 24px 20px; }
         .login-right-pane { padding: 28px 22px; }
@@ -419,69 +463,41 @@
         .login-left-text h3 { font-size: 12px; }
         .login-left-text p { font-size: 11.5px; }
         .login-right-pane h2 { font-size: 18px; }
-
-        /* Header */
         .header { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px; }
         .header-actions { justify-content: stretch; }
         .header-actions .btn { flex: 1; min-width: 0; }
         .badge-status { text-align: center; }
-
-        /* Nav módulos */
         .nav-modules { grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; }
         .mod-btn { min-height: 48px; padding: 6px 4px; font-size: 10.5px; line-height: 1.15; }
         .mod-full { display: none; }
         .mod-short { display: inline-block; white-space: normal; }
-
-        /* Tabs */
         .tab-nav { gap: 4px; }
         .tab-btn { min-width: 0; flex: 1 1 50%; white-space: normal; line-height: 1.2; padding: 10px 8px; font-size: 11.5px; }
-
-        /* Botones full width */
         .btn { width: 100%; min-height: 44px; white-space: normal; line-height: 1.2; padding: 10px 12px; }
-        .search-box-custom .btn,
-        .card > div > .btn { width: auto; }
+        .search-box-custom .btn, .card > div > .btn { width: auto; }
         .card > div[style*="display: flex"] { flex-direction: column; align-items: stretch; }
         .card > div[style*="display: flex"] > .btn { width: 100%; }
-
-        /* Filtros en 1 columna */
         .filter-grid-4 { grid-template-columns: 1fr; }
         .filter-group select, .filter-group input { font-size: 16px; }
-
-        /* Stats */
         .stat-grid-colored { grid-template-columns: repeat(2, 1fr); gap: 8px; }
         .stat-card-colored { padding: 10px 12px; }
         .stat-card-colored .stat-num { font-size: 20px; }
-
-        /* Person bar */
         .person-horizontal-bar { grid-template-columns: 1fr; padding: 12px; }
-
-        /* Ficha técnica */
         .pane-title { font-size: 12px; }
-
-        /* Tabla Módulo 2 */
         .clean-report-table { min-width: 800px; font-size: 11px; }
         .clean-report-table th, .clean-report-table td { padding: 8px 6px; }
-
-        /* Analytics */
         .analytics-card { padding: 14px; }
         .brand-bar { width: 50px; }
         .type-block .tb-num { font-size: 22px; padding-right: 4px; }
         .type-block .tb-icon { font-size: 22px; }
-
-        /* Modal */
         .modal-overlay { padding: 10px; }
         .modal-marcas-box { padding: 16px; max-height: 90vh; }
         .modal-marcas-list { max-height: 50vh; }
-
-        /* Reporte A4 y Acta */
-        .reporte-a4-documento,
-        .acta-documento-a4 {
+        .reporte-a4-documento, .acta-documento-a4 {
             width: 100%; min-height: auto; padding: 16px 14px;
             box-shadow: none; border-radius: 8px;
             font-size: 8pt;
         }
-
-        /* Acta responsive */
         .acta-bloque-pie { position: static; margin-top: 24px; left: auto; right: auto; bottom: auto; }
         .acta-signatures-box { flex-direction: column; gap: 24px; padding: 0; }
         .sig-col { width: 100%; }
@@ -489,148 +505,89 @@
         .acta-checks-container { justify-content: center; margin-top: 16px; margin-bottom: 16px; }
         .acta-table { font-size: 7.5pt; margin-top: 16px; }
         .acta-table th, .acta-table td { padding: 3px 2px; }
-
-        /* Toast */
         .toast-container { top: 10px; right: 10px; left: 10px; max-width: none; }
     }
-
-    /* =========================================================
-       BREAKPOINT 640px — Móviles medianos
-    ========================================================= */
     @media (max-width: 640px) {
         .nav-modules { grid-template-columns: 1fr; gap: 6px; }
         .mod-btn { min-height: 44px; font-size: 12px; padding: 10px 8px; }
         .mod-full { display: inline-block; }
         .mod-short { display: none; }
-
         .card { padding: 12px; margin-bottom: 12px; border-radius: 12px; }
         .card h2 { font-size: 13.5px; margin-bottom: 12px; }
-
         .stat-grid-colored { grid-template-columns: repeat(2, 1fr); }
         .stat-card-colored .stat-label { font-size: 9px; }
         .stat-card-colored .stat-num { font-size: 18px; }
-
         .person-horizontal-bar { padding: 12px; }
         .person-horizontal-bar div b { font-size: 9.5px; }
         .person-horizontal-bar div span { font-size: 12px; }
-
         .search-box-custom { padding: 10px; }
         .search-input-field { min-width: 100%; }
-
         .input-control { font-size: 16px; padding: 10px 12px; }
-
         .tab-btn { font-size: 11px; padding: 9px 6px; }
-
         .analytics-card h4 { font-size: 11.5px; padding-bottom: 8px; }
-
         .type-block { padding: 10px 12px; column-gap: 8px; }
         .type-block .tb-label { font-size: 10.5px; }
         .type-block .tb-num { font-size: 20px; }
         .type-block .tb-icon { font-size: 20px; }
-
         .brand-row { padding: 6px 8px; }
         .brand-bar { width: 40px; }
-
-        /* Modal */
         .modal-marcas-box h3 { font-size: 13px; }
         .modal-footer-stats { font-size: 10.5px; }
     }
-
-    /* =========================================================
-       BREAKPOINT 480px — Móviles pequeños
-    ========================================================= */
     @media (max-width: 480px) {
         body { padding: 2px; }
-
         .header { padding: 12px; }
         .header-title h1 { font-size: 14px; }
         .header-title p { font-size: 10.5px; }
-
         .card { padding: 10px; }
         .card h2 { font-size: 12.5px; }
-
         .mod-btn { font-size: 11.5px; min-height: 42px; }
-
         .stat-card-colored { padding: 8px 10px; }
         .stat-card-colored .stat-num { font-size: 17px; }
-
         .analytics-card { padding: 12px; }
         .analytics-card h4 { font-size: 11px; }
-
         .type-block .tb-num { font-size: 18px; padding-right: 0; }
         .type-block .tb-icon { font-size: 18px; }
         .type-block .tb-label { font-size: 10px; }
-
-        /* Tablas */
         .clean-report-table { min-width: 700px; font-size: 10.5px; }
         .clean-report-table th { font-size: 9.5px; }
-
-        /* Acta */
         .acta-title { font-size: 9pt; }
         .acta-table { font-size: 7pt; }
         .acta-table th, .acta-table td { padding: 2px 1.5px; }
         .acta-body-text { font-size: 8.5pt; }
         .sig-role-text { font-size: 8.5pt; }
-
-        /* Modal */
         .modal-marcas-box { padding: 14px; }
     }
-
-    /* =========================================================
-       BREAKPOINT 375px — iPhone SE / móviles muy pequeños
-    ========================================================= */
     @media (max-width: 375px) {
         .header-title h1 { font-size: 13px; line-height: 1.25; }
         .header-title p { font-size: 10px; }
-
         .mod-btn { font-size: 10.5px; padding: 8px 4px; }
-
         .stat-grid-colored { grid-template-columns: 1fr 1fr; gap: 6px; }
         .stat-card-colored { padding: 7px 8px; }
         .stat-card-colored .stat-label { font-size: 8.5px; }
         .stat-card-colored .stat-num { font-size: 15px; }
-
         .analytics-card h4 { font-size: 10.5px; }
-
         .brand-name { font-size: 10.5px; }
         .brand-count { font-size: 11px; }
         .brand-bar { width: 30px; }
-
         .type-block .tb-num { font-size: 16px; }
         .type-block .tb-icon { font-size: 16px; }
-
         .acta-title { font-size: 8pt; }
         .acta-body-text { font-size: 8pt; }
         .acta-table { font-size: 6.5pt; }
         .sig-role-text { font-size: 8pt; margin-bottom: 24px; }
     }
-
-    /* =========================================================
-       MODO LANDSCAPE en móviles (poca altura)
-    ========================================================= */
     @media (max-height: 500px) and (orientation: landscape) {
         .login-left-pane { display: none; }
         .login-card-container { grid-template-columns: 1fr; }
     }
-
-    /* =========================================================
-       PREFERENCIAS DE ACCESIBILIDAD
-    ========================================================= */
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
-
-    /* =========================================================
-       TOUCH DEVICES — Áreas de toque mínimas
-    ========================================================= */
     @media (pointer: coarse) {
         .btn, .mod-btn, .tab-btn, .check-item, .type-block { min-height: 44px; }
         select, input[type="text"], input[type="password"], input[type="number"] { min-height: 44px; }
     }
-
-    /* =========================================================
-       IMPRESIÓN
-    ========================================================= */
     @media print {
         body { background: #fff; padding: 0; }
         .header, .nav-modules, .card:not(.reporte-a4-documento):not(.acta-documento-a4) > *,
@@ -645,7 +602,7 @@
     <div class="login-card-container">
         <div class="login-left-pane">
             <div class="login-brand-area">
-                <img class="login-logo-img" src="logo.png" alt="Logo MIDIS">
+                <img class="login-logo-img" src="logo.png" alt="Logo MIDIS" onerror="this.style.display='none'">
                 <div class="login-brand-title">MIDIS OGTI 2026</div>
             </div>
             <div class="login-left-text">
@@ -665,6 +622,7 @@
                 <div class="login-form-group">
                     <label for="loginPass">Contraseña</label>
                     <input type="password" id="loginPass" class="login-input" placeholder="••••••••••••" required autocomplete="current-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('loginPass', this)" title="Ver / Ocultar contraseña">👁️</button>
                 </div>
                 <button type="submit" class="login-submit-btn" id="loginSubmitBtn">Ingresar al Sistema</button>
                 <div class="login-error-msg" id="loginErrorMsg"></div>
@@ -682,33 +640,38 @@
             <p>Inventario 2026: Control de Bienes, Reportes Jerárquicos y Emisión de Actas</p>
         </div>
         <div class="header-actions">
-            <button class="btn btn-amber" onclick="sincronizarDrive(true)" title="Forzar sincronización desde Drive">🔄 Sincronizar</button>
+            <button class="btn btn-amber" onclick="sincronizarDrive(false)" title="Sincronizar desde Drive">🔄 Sincronizar</button>
+            <button class="btn btn-gray" onclick="abrirModalCambiarPass()" title="Cambiar contraseña" id="btnCambiarPass" style="display:none;">🔑 Contraseña</button>
             <button class="btn btn-danger" onclick="cerrarSesion()" title="Cerrar sesión actual">🚪 Salir</button>
             <span id="badgeConexion" class="badge-status badge-wait">Sincronizando...</span>
         </div>
     </div>
 
     <div class="nav-modules">
-        <button class="mod-btn active" onclick="cambiarModulo('modulo-consulta', this)">
+        <button class="mod-btn active" onclick="cambiarModulo('modulo-consulta', this)" data-modulo="modulo-consulta">
             <span class="mod-full">🔍 MÓDULO 1: CONSULTA Y EDICIÓN</span>
             <span class="mod-short">🔍 CONSULTA</span>
         </button>
-        <button class="mod-btn" onclick="cambiarModulo('modulo-reporte', this)">
+        <button class="mod-btn" onclick="cambiarModulo('modulo-reporte', this)" data-modulo="modulo-reporte">
             <span class="mod-full">📊 MÓDULO 2: REPORTE JERÁRQUICO</span>
             <span class="mod-short">📊 REPORTES</span>
         </button>
-        <button class="mod-btn" onclick="cambiarModulo('modulo-acta', this)">
+        <button class="mod-btn" onclick="cambiarModulo('modulo-acta', this)" data-modulo="modulo-acta">
             <span class="mod-full">📑 MÓDULO 3: ACTA DE ENTREGA / RECEPCIÓN</span>
             <span class="mod-short">📑 ACTA</span>
         </button>
+    </div>
+
+    <div id="bannerSoloLectura" class="read-only-banner" style="display:none;">
+        👁️ <span><b>MODO CONSULTA</b></span>
     </div>
 
     <!-- ================= MÓDULO 1 ================= -->
     <div id="modulo-consulta" class="modulo-content">
         <div class="card">
             <div class="tab-nav">
-                <button class="tab-btn active" onclick="cambiarSubTab('tab-persona', this)">1. POR NOMBRES / APELLIDOS O DNI</button>
-                <button class="tab-btn" onclick="cambiarSubTab('tab-cod', this)">2. POR CÓDIGO SBN / PATRIMONIAL</button>
+                <button class="tab-btn active" onclick="cambiarSubTab('tab-persona', this)" data-tab="tab-persona">1. POR NOMBRES / APELLIDOS O DNI</button>
+                <button class="tab-btn" onclick="cambiarSubTab('tab-cod', this)" data-tab="tab-cod">2. POR CÓDIGO SBN / PATRIMONIAL</button>
             </div>
             <div id="tab-persona" class="subtab-content" style="display: block;">
                 <div class="search-box-custom">
@@ -764,7 +727,7 @@
             <div class="two-columns-vertical">
                 <div class="vertical-pane">
                     <div class="pane-title"><span>Ficha Técnica del Bien</span></div>
-                    <div style="background:#fff1f2; border:1px solid #fecdd3; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
+                    <div id="boxEdicionTecnica" style="background:#fff1f2; border:1px solid #fecdd3; padding:10px 14px; border-radius:6px; margin-bottom:14px;">
                         <label style="font-size:11.5px; font-weight:700; color:#881337; cursor:pointer; display:flex; align-items:center; gap:6px;">
                             <input type="checkbox" id="chkEditarTodo" onchange="toggleEdicionTotal()" style="width:16px; height:16px; accent-color:#e11d48;">
                             ✏️ Habilitar edición técnica
@@ -786,7 +749,7 @@
                 <div class="vertical-pane">
                     <div class="pane-title">Gestión y Reasignación</div>
                     <div id="fAiBox" style="padding:12px; border-radius:6px; font-size:12px; margin-bottom:14px; border:1px solid;"></div>
-                    <div class="field-group"><label>DNI del Servidor:</label><input type="text" id="editDni" class="input-control" maxlength="15"></div>
+                    <div class="field-group"><label>DNI del Servidor:</label><input type="text" id="editDni" class="input-control" maxlength="8" inputmode="numeric"></div>
                     <div class="field-group"><label>Nombres y Apellidos:</label><input type="text" id="editUsuario" class="input-control" maxlength="120"></div>
                     <div class="field-group"><label>Área / Dependencia:</label><input type="text" id="editArea" class="input-control" maxlength="150" disabled></div>
                     <div class="field-group"><label>Sub-Área / Oficina:</label><input type="text" id="editSubArea" class="input-control" maxlength="150" disabled></div>
@@ -877,7 +840,7 @@
 
         <div id="m2ContenedorReporteA4" class="reporte-a4-documento" style="display: none;">
             <div class="reporte-a4-header-top">
-                <img class="reporte-logo-img" src="logo.png" alt="Logo MIDIS">
+                <img class="reporte-logo-img" src="logo.png" alt="Logo MIDIS" onerror="this.style.display='none'">
                 <div style="font-size: 9pt; font-weight: bold; color: #881337;">MINISTERIO DE DESARROLLO E INCLUSIÓN SOCIAL</div>
             </div>
             <div class="reporte-a4-title-box">
@@ -950,7 +913,7 @@
         <div id="actaDocumentoImpresion" class="acta-documento-a4">
             <div class="acta-contenido-principal">
                 <div class="acta-header-top">
-                    <img class="acta-logo-img" src="logo.png" alt="Logo MIDIS">
+                    <img class="acta-logo-img" src="logo.png" alt="Logo MIDIS" onerror="this.style.display='none'">
                 </div>
 
                 <div class="acta-title">"ACTA DE DESPLAZAMIENTO DE EQUIPAMIENTO Y MATERIAL DE CÓMPUTO"</div>
@@ -975,12 +938,13 @@
                 <table class="acta-table" id="tablaActaOficial">
                     <thead>
                         <tr>
-                            <th style="width: 6%;">Nº</th>
-                            <th style="width: 38%;">Detalle del Bien que se recibe y/o entrega</th>
-                            <th style="width: 10%;">Cantidad</th>
-                            <th style="width: 16%;">N° de Serie</th>
+                            <th style="width: 5%;">Nº</th>
+                            <th style="width: 36%;">Detalle del Bien que se recibe y/o entrega</th>
+                            <th style="width: 8%;">Cantidad</th>
+                            <th style="width: 15%;">N° de Serie</th>
                             <th style="width: 15%;">Cod Patrimonial</th>
                             <th style="width: 15%;">Observaciones</th>
+                            <th style="width: 6%;">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="actaTableBody"></tbody>
@@ -1021,7 +985,7 @@
     ========================================================= */
     const CONFIG = Object.freeze({
         urlScript: "https://script.google.com/macros/s/AKfycbwow9ISio1I88sdtDp65uVS7Ar-KJcUGLf6oDbnHVp_pnKl0RPCWMEjehRv36Bbr1t5/exec",
-        cacheKey: "midis_inventario_cache_v2",
+        cacheKey: "midis_inventario_cache_v3",
         sessionKey: "midis_session_token",
         sessionUserKey: "midis_session_user",
         cacheTTL: 2 * 60 * 1000,
@@ -1038,7 +1002,10 @@
     let hayCambiosSinGuardar = false;
     let sessionToken = null;
     let sessionUser = null;
+    let puedeEditar = false;
     let debounceTimers = {};
+    let loginEnProceso = false;
+    let m2Generando = false;
 
     const coloresMarcasCatalogo = {
         "HP": "#0284c7", "LENOVO": "#dc2626", "DELL": "#0d9488", "ACER": "#16a34a",
@@ -1047,49 +1014,24 @@
     };
 
     /* =========================================================
-       UTILIDADES DE SEGURIDAD
+       UTILIDADES
     ========================================================= */
     function escapeHtml(str) {
         if (str === null || str === undefined) return "";
         return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function escapeAttr(str) {
-        return escapeHtml(str).replace(/`/g, "&#96;");
-    }
-
-    async function sha256Hex(text) {
-        const enc = new TextEncoder().encode(text);
-        const buf = await crypto.subtle.digest("SHA-256", enc);
-        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    function generarToken() {
-        const arr = new Uint8Array(24);
-        crypto.getRandomValues(arr);
-        return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    /* =========================================================
-       DEBOUNCE
-    ========================================================= */
-    function debounce(key, fn, wait = 250) {
-        return function(...args) {
-            clearTimeout(debounceTimers[key]);
-            debounceTimers[key] = setTimeout(() => fn.apply(this, args), wait);
-        };
-    }
-
-    /* =========================================================
-       UTILIDADES GENERALES
-    ========================================================= */
     const normalizarDni = (v) => String(v || "").replace(/\.0$/, "").trim();
     const limpiarStr = (v) => String(v || "").replace(/\.0$/, "").trim();
+
+    function validarDniPeruano(dni) {
+        // Acepta DNI de 8 dígitos o carné de extranjería (hasta 12)
+        const d = String(dni || "").trim();
+        if (!d) return true; // vacío es válido (no obligatorio)
+        return /^\d{8,12}$/.test(d);
+    }
 
     function normalizarClaves(obj) {
         const out = {};
@@ -1160,9 +1102,19 @@
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
-            overlay.querySelector("#modalOk").onclick = () => { overlay.remove(); resolve(true); };
-            overlay.querySelector("#modalCancel").onclick = () => { overlay.remove(); resolve(false); };
-            overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+
+            const cerrar = (resultado) => {
+                overlay.remove();
+                document.removeEventListener("keydown", onEsc);
+                resolve(resultado);
+            };
+            const onEsc = (e) => { if (e.key === "Escape") cerrar(false); };
+
+            overlay.querySelector("#modalOk").onclick = () => cerrar(true);
+            overlay.querySelector("#modalCancel").onclick = () => cerrar(false);
+            overlay.onclick = (e) => { if (e.target === overlay) cerrar(false); };
+            document.addEventListener("keydown", onEsc);
+            setTimeout(() => overlay.querySelector("#modalOk").focus(), 50);
         });
     }
 
@@ -1175,108 +1127,282 @@
             return res;
         } catch (e) {
             clearTimeout(timeoutId);
-            if (e.name === "AbortError") throw new Error("Tiempo de espera agotado. Verifica tu conexión.");
+            if (e.name === "AbortError") throw new Error("Tiempo de espera agotado.");
             throw e;
         }
     }
 
+    function debounce(key, fn, wait = 250) {
+        return function(...args) {
+            clearTimeout(debounceTimers[key]);
+            debounceTimers[key] = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
+    function mostrarCargaM2(show) {
+        let overlay = document.getElementById("loadingM2");
+        if (show) {
+            if (!overlay) {
+                overlay = document.createElement("div");
+                overlay.id = "loadingM2";
+                overlay.className = "loading-overlay-m2";
+                overlay.innerHTML = '<div class="spinner-big"></div><div>Generando reporte...</div>';
+                document.body.appendChild(overlay);
+            }
+            overlay.style.display = "flex";
+        } else if (overlay) {
+            overlay.style.display = "none";
+        }
+    }
+
     /* =========================================================
-       LOGIN SEGURO
-       - Intenta validar contra Apps Script (accion=login).
-       - Si el script no responde o no soporta login, se usa un
-         fallback local con hash SHA-256 (las contraseñas en texto
-         plano ya NO están en el cliente, solo sus hashes).
-       - Se crea un token de sesión aleatorio y se guarda en
-         sessionStorage (no localStorage), de modo que al cerrar
-         el navegador la sesión expira.
+       VER / OCULTAR CONTRASEÑA
+    ========================================================= */
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        if (input.type === "password") {
+            input.type = "text";
+            btn.textContent = "🙈";
+            btn.title = "Ocultar contraseña";
+        } else {
+            input.type = "password";
+            btn.textContent = "👁️";
+            btn.title = "Ver contraseña";
+        }
+    }
+
+    /* =========================================================
+       APLICAR PERMISOS SEGÚN ROL
+    ========================================================= */
+    function aplicarPermisos() {
+        const esEditor = puedeEditar;
+        const banner = document.getElementById("bannerSoloLectura");
+        if (banner) banner.style.display = esEditor ? "none" : "flex";
+
+        const boxEditTec = document.getElementById("boxEdicionTecnica");
+        if (boxEditTec) boxEditTec.style.display = esEditor ? "block" : "none";
+
+        const btnSave = document.getElementById("btnSave");
+        if (btnSave) btnSave.style.display = esEditor ? "inline-flex" : "none";
+
+        const btnPass = document.getElementById("btnCambiarPass");
+        if (btnPass) btnPass.style.display = esEditor ? "inline-flex" : "none";
+
+        ["editDni", "editUsuario"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = !esEditor;
+        });
+
+        if (!esEditor) {
+            const chk = document.getElementById("chkEditarTodo");
+            if (chk) { chk.checked = false; chk.disabled = true; }
+            edicionTotalActiva = false;
+            ["tecDesc", "tecMarca", "tecModelo", "tecSerie", "tecAmbiente",
+             "tecAntiguedad", "tecProcesador", "tecRam", "tecDisco", "tecIp"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = true;
+            });
+        } else {
+            const chk = document.getElementById("chkEditarTodo");
+            if (chk) chk.disabled = false;
+        }
+    }
+
+    /* =========================================================
+       LOGIN
     ========================================================= */
     async function handleLogin(e) {
         e.preventDefault();
+        if (loginEnProceso) return;
         const userInput = document.getElementById("loginUser").value.trim();
         const passInput = document.getElementById("loginPass").value.trim();
         const errorMsg = document.getElementById("loginErrorMsg");
         const btn = document.getElementById("loginSubmitBtn");
         errorMsg.textContent = "";
+
         if (!userInput || !passInput) {
             errorMsg.textContent = "Complete usuario y contraseña.";
             return;
         }
 
+        loginEnProceso = true;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span> Validando...';
 
         try {
-            // 1) Intentar validación en Apps Script
-            let validado = null;
-            try {
-                const res = await fetchConTimeout(CONFIG.urlScript, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ accion: "login", usuario: userInput, password: passInput }),
-                    redirect: "follow"
-                });
-                const txt = await res.text();
-                let data = null;
-                try { data = JSON.parse(txt); } catch (e) { /* no JSON */ }
-                if (data && data.success && data.usuario) {
-                    validado = { usuario: data.usuario, nombre: data.nombre || data.usuario };
-                }
-            } catch (err) {
-                console.warn("[login] Backend no disponible, usando fallback local.");
-            }
+            const res = await fetchConTimeout(CONFIG.urlScript, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ accion: "login", usuario: userInput, password: passInput }),
+                redirect: "follow"
+            });
+            const txt = await res.text();
+            let data;
+            try { data = JSON.parse(txt); } catch (err) { throw new Error("Respuesta inválida del servidor."); }
 
-            // 2) Fallback local con hash SHA-256 (no expone contraseñas)
-            if (!validado) {
-                validado = await validarLocal(userInput, passInput);
-            }
-
-            if (!validado) {
-                errorMsg.textContent = "Usuario o contraseña incorrectos.";
-                mostrarToast("Credenciales inválidas.", "error");
+            if (!data.success) {
+                errorMsg.textContent = data.error || "Credenciales inválidas.";
                 return;
             }
 
-            sessionToken = generarToken();
-            sessionUser = validado.usuario;
+            sessionToken = data.token;
+            sessionUser = { usuario: data.usuario, nombre: data.nombre, rol: data.rol };
+            puedeEditar = (data.rol === "editor");
+
             try {
                 sessionStorage.setItem(CONFIG.sessionKey, sessionToken);
-                sessionStorage.setItem(CONFIG.sessionUserKey, JSON.stringify(validado));
-            } catch (e) { /* sessionStorage lleno */ }
+                sessionStorage.setItem(CONFIG.sessionUserKey, JSON.stringify(sessionUser));
+                // Persistencia multipestaña
+                localStorage.setItem(CONFIG.sessionKey, sessionToken);
+                localStorage.setItem(CONFIG.sessionUserKey, JSON.stringify(sessionUser));
+            } catch (e) {}
 
             document.getElementById("login-overlay").style.display = "none";
             document.getElementById("loginPass").value = "";
-            mostrarToast(`¡Bienvenido, ${validado.nombre}!`, "success");
-            // Cargar inventario solo tras login exitoso
-            sincronizarDrive();
+
+            aplicarPermisos();
+            mostrarToast(`Bienvenido, ${data.nombre}`, "success");
+
+            if (data.debeCambiarPass) {
+                setTimeout(() => abrirModalCambiarPass(true), 500);
+            }
+
+            sincronizarDrive(false);
+
+        } catch (err) {
+            console.error("[login]", err);
+            errorMsg.textContent = "Error de conexión. Intenta de nuevo.";
         } finally {
+            loginEnProceso = false;
             btn.disabled = false;
             btn.innerHTML = "Ingresar al Sistema";
         }
     }
 
-    // Hashes SHA-256 de las contraseñas autorizadas (calculados una vez).
-    // Para regenerar: await sha256Hex("nuevaPassword")
-    const USUARIOS_HASH = {
-        "admin":    "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92", // 123456
-        "48100357": "f0e1b4d9c8a3e2f5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9", // mijo2026 (placeholder)
-        "alara":    "9f2c5e1a4b7d0c3f6e9a2d5c8b1e4f7a0c3d6e9b2f5a8c1d4e7b0f3a6c9d2e5b"  // Midis2026$$ (placeholder)
-    };
-    const USUARIOS_NOMBRE = {
-        "admin": "Administrador TIC",
-        "48100357": "Mijael Rivera",
-        "alara": "Angel Lara"
-    };
+    /* =========================================================
+       MODAL CAMBIO DE CONTRASEÑA
+    ========================================================= */
+    function abrirModalCambiarPass(obligatorio = false) {
+        if (!sessionToken) { mostrarToast("Debes iniciar sesión primero.", "warning"); return; }
+        if (document.getElementById("modalCambiarPass")) return;
 
-    async function validarLocal(usuario, password) {
-        const hashCalc = await sha256Hex(password);
-        const hashEsperado = USUARIOS_HASH[usuario];
-        if (!hashEsperado) return null;
-        if (hashCalc !== hashEsperado) return null;
-        return { usuario, nombre: USUARIOS_NOMBRE[usuario] || usuario };
+        const overlay = document.createElement("div");
+        overlay.className = "modal-generic";
+        overlay.id = "modalCambiarPass";
+        overlay.innerHTML = `
+            <div class="modal-box">
+                <h3>🔑 Cambiar Contraseña</h3>
+                <p>${obligatorio
+                    ? "Es tu <b>primer inicio de sesión</b>. Debes cambiar tu contraseña para continuar."
+                    : "Ingresa tu contraseña actual y la nueva contraseña."
+                }</p>
+
+                <div class="field-group">
+                    <label>Contraseña actual:</label>
+                    <input type="password" id="passActual" placeholder="Tu contraseña actual" autocomplete="current-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('passActual', this)" title="Ver contraseña">👁️</button>
+                </div>
+                <div class="field-group">
+                    <label>Nueva contraseña:</label>
+                    <input type="password" id="passNueva" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('passNueva', this)" title="Ver contraseña">👁️</button>
+                </div>
+                <div class="field-group">
+                    <label>Repetir nueva contraseña:</label>
+                    <input type="password" id="passNueva2" placeholder="Repite la nueva contraseña" autocomplete="new-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('passNueva2', this)" title="Ver contraseña">👁️</button>
+                </div>
+
+                <div id="cambiarPassError" style="font-size:12px; color:#b91c1c; font-weight:600; min-height:16px; margin-top:6px;"></div>
+
+                <div class="modal-actions">
+                    ${obligatorio ? "" : '<button class="btn btn-gray" id="cancelCambiarPass">Cancelar</button>'}
+                    <button class="btn btn-blue" id="okCambiarPass">Cambiar Contraseña</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        const onEsc = (e) => {
+            if (e.key === "Escape" && !obligatorio) {
+                overlay.remove();
+                document.removeEventListener("keydown", onEsc);
+            }
+        };
+        document.addEventListener("keydown", onEsc);
+
+        if (!obligatorio) {
+            overlay.querySelector("#cancelCambiarPass").onclick = () => {
+                overlay.remove();
+                document.removeEventListener("keydown", onEsc);
+            };
+        }
+
+        overlay.querySelector("#okCambiarPass").onclick = () => ejecutarCambioPass(obligatorio);
     }
 
-    function cerrarSesion() {
-        // Limpieza completa de estado
+    async function ejecutarCambioPass(obligatorio) {
+        const actual = document.getElementById("passActual").value.trim();
+        const nueva = document.getElementById("passNueva").value.trim();
+        const nueva2 = document.getElementById("passNueva2").value.trim();
+        const err = document.getElementById("cambiarPassError");
+        const btn = document.getElementById("okCambiarPass");
+        err.textContent = "";
+
+        if (!actual || !nueva || !nueva2) { err.textContent = "Completa todos los campos."; return; }
+        if (nueva.length < 6) { err.textContent = "La nueva contraseña debe tener al menos 6 caracteres."; return; }
+        if (nueva !== nueva2) { err.textContent = "Las contraseñas nuevas no coinciden."; return; }
+        if (nueva === actual) { err.textContent = "La nueva contraseña debe ser diferente a la actual."; return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Cambiando...';
+
+        try {
+            const res = await fetchConTimeout(CONFIG.urlScript, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({
+                    accion: "cambiarPassword",
+                    token: sessionToken,
+                    passwordActual: actual,
+                    passwordNueva: nueva
+                }),
+                redirect: "follow"
+            });
+            const data = await res.json();
+            if (!data.success) { err.textContent = data.error || "Error al cambiar contraseña."; return; }
+
+            const modal = document.getElementById("modalCambiarPass");
+            if (modal) modal.remove();
+            mostrarToast("✅ Contraseña actualizada correctamente.", "success");
+        } catch (e) {
+            err.textContent = "Error de conexión.";
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = "Cambiar Contraseña";
+        }
+    }
+
+    /* =========================================================
+       CERRAR SESIÓN
+    ========================================================= */
+    async function cerrarSesion() {
+        if (hayCambiosSinGuardar) {
+            const ok = await confirmar("Hay cambios sin guardar. ¿Cerrar sesión de todas formas?", "⚠️ Cambios sin guardar");
+            if (!ok) return;
+        }
+
+        if (sessionToken) {
+            try {
+                fetchConTimeout(CONFIG.urlScript, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ accion: "logout", token: sessionToken }),
+                    redirect: "follow"
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
         inventario = [];
         servidorActualSeleccionado = null;
         equiposDelServidor = [];
@@ -1286,13 +1412,14 @@
         hayCambiosSinGuardar = false;
         sessionToken = null;
         sessionUser = null;
+        puedeEditar = false;
 
-        // Limpiar almacenamiento sensible
         try { sessionStorage.removeItem(CONFIG.sessionKey); } catch (e) {}
         try { sessionStorage.removeItem(CONFIG.sessionUserKey); } catch (e) {}
+        try { localStorage.removeItem(CONFIG.sessionKey); } catch (e) {}
+        try { localStorage.removeItem(CONFIG.sessionUserKey); } catch (e) {}
         try { localStorage.removeItem(CONFIG.cacheKey); } catch (e) {}
 
-        // Resetear formularios
         document.getElementById("loginUser").value = "";
         document.getElementById("loginPass").value = "";
         document.getElementById("loginErrorMsg").textContent = "";
@@ -1303,25 +1430,24 @@
         document.getElementById("m2ContenedorReporteA4").style.display = "none";
         document.getElementById("m2AnalyticsWrapper").style.display = "none";
         document.getElementById("actaTableBody").innerHTML = "";
+        document.getElementById("btnCambiarPass").style.display = "none";
+        document.getElementById("bannerSoloLectura").style.display = "none";
 
-        // Resetear selects del Módulo 2
         document.getElementById("m2Gerencia").innerHTML = '<option value="">-- Seleccione Gerencia --</option>';
         document.getElementById("m2Area").innerHTML = '<option value="">-- Todas las Áreas --</option>';
         document.getElementById("m2SubArea").innerHTML = '<option value="">-- Todas las Subáreas --</option>';
 
-        // Resetear selects del Módulo 3
         document.getElementById("m3Gerencia").innerHTML = '<option value="">-- Seleccione Gerencia --</option>';
         document.getElementById("m3Area").innerHTML = '<option value="">-- Seleccione Área --</option>';
         document.getElementById("m3SubArea").innerHTML = '<option value="">-- Seleccione Subárea --</option>';
         document.getElementById("m3Servidor").innerHTML = '<option value="">-- Seleccione Servidor --</option>';
 
-        // Volver al login
         document.getElementById("login-overlay").style.display = "flex";
         mostrarToast("Sesión cerrada correctamente.", "info");
     }
 
     /* =========================================================
-       SINCRONIZACIÓN DRIVE
+       SINCRONIZACIÓN
     ========================================================= */
     async function sincronizarDrive(forzar = false) {
         if (!sessionToken) return;
@@ -1342,26 +1468,29 @@
                         return;
                     }
                 }
-            } catch (e) { /* caché corrupto */ }
+            } catch (e) {}
         }
 
         try {
-            const url = CONFIG.urlScript + (forzar ? "?refresh=1&_t=" + Date.now() : "");
+            const url = CONFIG.urlScript + (forzar ? "?refresh=1&_t=" + Date.now() : "?_t=" + Date.now());
             const res = await fetchConTimeout(url, { method: "GET", redirect: "follow" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            let lista = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
-            if (lista.length === 0) throw new Error("El inventario está vacío.");
+            let lista = Array.isArray(data) ? data :
+                        (data && Array.isArray(data.data) ? data.data :
+                        (data && (data.cpu || data.monitores || data.teclados)
+                            ? [].concat(data.cpu || [], data.monitores || [], data.teclados || [])
+                            : []));
 
+            if (lista.length === 0) throw new Error("El inventario está vacío.");
             inventario = lista.map(normalizarClaves);
 
             try {
                 localStorage.setItem(CONFIG.cacheKey, JSON.stringify({
-                    timestamp: Date.now(),
-                    data: inventario
+                    timestamp: Date.now(), data: inventario
                 }));
-            } catch (e) { /* localStorage lleno */ }
+            } catch (e) {}
 
             badge.className = "badge-status badge-ok";
             badge.innerText = `✅ Conectado: ${inventario.length} bienes`;
@@ -1370,7 +1499,6 @@
         } catch (e) {
             console.error("[sincronizarDrive]", e);
             badge.className = "badge-status badge-wait";
-            // Fallback SOLO si no hay inventario cargado previamente
             if (inventario.length === 0) {
                 inventario = [
                     { DNI: "48100357", USUARIO_RESPONSABLE: "MIJAEL RIVERA", GERENCIA: "GERENCIA DE CALIDAD", AREA: "DIRECCIÓN DE CALIDAD", SUBAREA: "MONITOREO", SBN_CONCILIADO: "74891234", DESCRIPCION_DEL_BIEN: "COMPUTADORA PORTATIL", MARCA: "HP", MODELO: "PROBOOK", SERIE: "CNU1234" },
@@ -1391,24 +1519,28 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-        // Recuperar sesión si existe (por si se recarga la pestaña)
         try {
-            const t = sessionStorage.getItem(CONFIG.sessionKey);
-            const u = sessionStorage.getItem(CONFIG.sessionUserKey);
+            // Prioridad: sessionStorage, luego localStorage (multipestaña)
+            let t = sessionStorage.getItem(CONFIG.sessionKey);
+            let u = sessionStorage.getItem(CONFIG.sessionUserKey);
+            if (!t) t = localStorage.getItem(CONFIG.sessionKey);
+            if (!u) u = localStorage.getItem(CONFIG.sessionUserKey);
+
             if (t && u) {
                 sessionToken = t;
                 sessionUser = JSON.parse(u);
+                puedeEditar = (sessionUser.rol === "editor");
+
                 document.getElementById("login-overlay").style.display = "none";
-                sincronizarDrive();
+                aplicarPermisos();
+                sincronizarDrive(false);
             }
-        } catch (e) { /* sin sesión */ }
+        } catch (e) {}
+        activarListenersCambios();
     });
 
     window.addEventListener("beforeunload", (e) => {
-        if (hayCambiosSinGuardar) {
-            e.preventDefault();
-            e.returnValue = "";
-        }
+        if (hayCambiosSinGuardar && puedeEditar) { e.preventDefault(); e.returnValue = ""; }
     });
 
     function cargarListasAutocompletado() {
@@ -1446,6 +1578,7 @@
         document.querySelectorAll('.modulo-content').forEach(m => m.style.display = 'none');
         btn.classList.add('active');
         document.getElementById(id).style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function cambiarSubTab(id, btn) {
@@ -1496,7 +1629,7 @@
             if (dniQuery) return dni === dniQuery;
             return nom.includes(query);
         });
-        if (!coincidencia.length) { mostrarToast("No se encontraron bienes para este DNI o nombre.", "warning"); return; }
+        if (!coincidencia.length) { mostrarToast("No se encontraron bienes.", "warning"); return; }
         servidorActualSeleccionado = coincidencia[0];
         equiposDelServidor = coincidencia;
         mostrarFichaServidor(servidorActualSeleccionado, equiposDelServidor);
@@ -1528,7 +1661,7 @@
 
     function buscarPorCodigo() {
         const cod = limpiarStr(document.getElementById("inCod").value);
-        if (!cod) { mostrarToast("Ingresa un código SBN o patrimonial.", "warning"); return; }
+        if (!cod) { mostrarToast("Ingresa un código.", "warning"); return; }
         let bien = inventario.find(r => {
             const sbn = limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
             const serie = limpiarStr(campo(r, "SERIE"));
@@ -1540,7 +1673,7 @@
                 return sbn.includes(cod);
             });
         }
-        if (!bien) { mostrarToast(`No se encontró el bien con código/serie: ${cod}`, "error"); return; }
+        if (!bien) { mostrarToast(`No se encontró: ${cod}`, "error"); return; }
 
         const dni = normalizarDni(campo(bien, "DNI"));
         const nom = (campo(bien, "USUARIO RESPONSABLE", "USUARIO") || "").trim();
@@ -1553,9 +1686,6 @@
         mostrarFichaServidor(bien, equiposDelServidor, bien);
     }
 
-    /* =========================================================
-       MÓDULO 1: MOSTRAR FICHA
-    ========================================================= */
     function mostrarFichaServidor(servidor, listaBienes, bienForzado = null) {
         let nCpu = 0, nMon = 0, nTec = 0;
         listaBienes.forEach(b => {
@@ -1581,7 +1711,6 @@
         listaBienes.forEach((b, idx) => {
             const opt = document.createElement("option");
             const codigo = limpiarStr(campo(b, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
-            // Usamos índice como value para evitar colisiones por código duplicado
             opt.value = String(idx);
             opt.dataset.codigo = codigo;
             opt.textContent = `[${detectarPestana(b)}] ${codigo} - ${campo(b, "DESCRIPCION DEL BIEN", "DESCRIPCION") || ""}`;
@@ -1602,6 +1731,7 @@
     }
 
     function toggleEdicionTotal() {
+        if (!puedeEditar) { document.getElementById("chkEditarTodo").checked = false; return; }
         edicionTotalActiva = document.getElementById("chkEditarTodo").checked;
         ["tecDesc", "tecMarca", "tecModelo", "tecSerie", "tecAmbiente", "tecAntiguedad", "tecProcesador", "tecRam", "tecDisco", "tecIp"].forEach(id => {
             document.getElementById(id).disabled = !edicionTotalActiva;
@@ -1635,75 +1765,58 @@
         aiBox.style.background = "#dcfce7";
         aiBox.style.color = "#15803d";
         aiBox.style.borderColor = "#bbf7d0";
-        aiBox.innerHTML = `<b>🟢 BIEN OPERATIVO</b><br>Antigüedad registrada: ${escapeHtml(document.getElementById("tecAntiguedad").value)}`;
+        aiBox.innerHTML = `<b>🟢 BIEN OPERATIVO</b><br>Antigüedad: ${escapeHtml(document.getElementById("tecAntiguedad").value)}`;
 
         hayCambiosSinGuardar = false;
     }
 
     /* =========================================================
-       MÓDULO 1: GUARDAR CAMBIOS (POST REAL)
+       MÓDULO 1: GUARDAR
     ========================================================= */
     async function guardarCambios() {
-        if (!bienEnEdicion) {
-            mostrarToast("No hay bien seleccionado para guardar.", "warning");
-            return;
-        }
-        if (!CONFIG.urlScript) {
-            mostrarToast("URL del script no configurada.", "error");
-            return;
-        }
+        if (!puedeEditar) { mostrarToast("No tienes permisos para editar.", "error"); return; }
+        if (!bienEnEdicion) { mostrarToast("No hay bien seleccionado.", "warning"); return; }
 
         const nuevoDni = normalizarDni(document.getElementById("editDni").value);
         const nuevoUser = document.getElementById("editUsuario").value.trim();
         const nuevaArea = document.getElementById("editArea").value.trim();
         const nuevaSubArea = document.getElementById("editSubArea").value.trim();
 
-        if (nuevoDni && !/^\d{7,15}$/.test(nuevoDni)) {
-            mostrarToast("El DNI debe contener solo números (7 a 15 dígitos).", "error");
+        if (nuevoDni && !validarDniPeruano(nuevoDni)) {
+            mostrarToast("DNI inválido. Debe tener entre 8 y 12 dígitos.", "error");
             return;
         }
-        if (!nuevoUser) {
-            mostrarToast("El nombre del servidor no puede estar vacío.", "error");
-            return;
-        }
+        if (!nuevoUser) { mostrarToast("El nombre no puede estar vacío.", "error"); return; }
 
-        // Validación de DNI duplicado contra otro responsable existente
         const codigoBien = limpiarStr(campo(bienEnEdicion, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
         const dniAntiguo = normalizarDni(campo(bienEnEdicion, "DNI"));
+
         if (nuevoDni && nuevoDni !== dniAntiguo) {
-            const responsableExistente = inventario.find(r => {
+            const existe = inventario.find(r => {
                 const d = normalizarDni(campo(r, "DNI"));
                 if (d !== nuevoDni) return false;
                 const cod = limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
                 return cod !== codigoBien;
             });
-            if (responsableExistente) {
-                const nomExist = campo(responsableExistente, "USUARIO RESPONSABLE", "USUARIO") || "otro servidor";
-                const ok = await confirmar(
-                    `El DNI <b>${escapeHtml(nuevoDni)}</b> ya pertenece a <b>${escapeHtml(nomExist)}</b>. ¿Deseas continuar con la reasignación?`,
-                    "⚠️ DNI duplicado"
-                );
+            if (existe) {
+                const nomExist = campo(existe, "USUARIO RESPONSABLE", "USUARIO") || "otro servidor";
+                const ok = await confirmar(`El DNI <b>${escapeHtml(nuevoDni)}</b> ya pertenece a <b>${escapeHtml(nomExist)}</b>. ¿Continuar?`, "⚠️ DNI duplicado");
                 if (!ok) return;
             }
         }
 
-        const ok = await confirmar(
-            `Se guardarán los cambios del bien <b>${escapeHtml(codigoBien)}</b> en Google Drive. ¿Continuar?`,
-            "💾 Confirmar guardado"
-        );
+        const ok = await confirmar(`Se guardarán los cambios del bien <b>${escapeHtml(codigoBien)}</b>. ¿Continuar?`, "💾 Confirmar guardado");
         if (!ok) return;
 
         const notice = document.getElementById("saveNotice");
         const btn = document.getElementById("btnSave");
         const textoOriginalBtn = btn.innerHTML;
-
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span> Guardando...';
         notice.style.color = "#e11d48";
-        notice.innerText = "Guardando cambios...";
+        notice.innerText = "Guardando...";
 
         const actualizarTecnicos = edicionTotalActiva;
-
         const payload = {
             accion: "actualizar",
             token: sessionToken,
@@ -1733,16 +1846,8 @@
                 body: JSON.stringify(payload),
                 redirect: "follow"
             });
-
-            let data;
-            const texto = await res.text();
-            try {
-                data = JSON.parse(texto);
-            } catch (e) {
-                throw new Error("Respuesta inválida del servidor.");
-            }
-
-            if (!data.success) throw new Error(data.error || "Error desconocido del servidor");
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "Error del servidor");
 
             bienEnEdicion.USUARIO_RESPONSABLE = nuevoUser;
             bienEnEdicion.DNI = nuevoDni;
@@ -1763,24 +1868,20 @@
             }
 
             try {
-                localStorage.setItem(CONFIG.cacheKey, JSON.stringify({
-                    timestamp: Date.now(),
-                    data: inventario
-                }));
-            } catch (e) { /* ignorar */ }
+                localStorage.setItem(CONFIG.cacheKey, JSON.stringify({ timestamp: Date.now(), data: inventario }));
+            } catch (e) {}
 
             hayCambiosSinGuardar = false;
             notice.style.color = "#15803d";
-            notice.innerText = "✅ ¡Actualizado exitosamente!";
-            mostrarToast("Bien actualizado correctamente en Drive.", "success");
-
+            notice.innerText = "✅ ¡Actualizado!";
+            mostrarToast("Bien actualizado correctamente.", "success");
             cambioBienSeleccionado();
             setTimeout(() => { notice.innerText = ""; }, 4000);
         } catch (e) {
             console.error("[guardarCambios]", e);
             notice.style.color = "#991b1b";
             notice.innerText = "❌ " + e.message;
-            mostrarToast(`Error al guardar: ${e.message}`, "error", 6000);
+            mostrarToast(`Error: ${e.message}`, "error", 6000);
         } finally {
             btn.disabled = false;
             btn.innerHTML = textoOriginalBtn;
@@ -1791,6 +1892,8 @@
         document.getElementById("inPersona").value = "";
         document.getElementById("inCod").value = "";
         document.getElementById("fichaConsultaCompleta").style.display = "none";
+        const selBien = document.getElementById("selBienServidor");
+        if (selBien) selBien.innerHTML = "";
         servidorActualSeleccionado = null;
         equiposDelServidor = [];
         bienEnEdicion = null;
@@ -1801,7 +1904,7 @@
     }
 
     /* =========================================================
-       MÓDULO 2: REPORTE JERÁRQUICO
+       MÓDULO 2
     ========================================================= */
     function inicializarFiltrosModulo2() {
         const selG = document.getElementById("m2Gerencia");
@@ -1846,7 +1949,6 @@
         generarReporteModulo2();
     }
 
-    // Devuelve la lista filtrada según los selects activos del módulo 2
     function obtenerListaFiltradaM2() {
         const ger = document.getElementById("m2Gerencia").value;
         const area = document.getElementById("m2Area").value;
@@ -1858,97 +1960,105 @@
     }
 
     function generarReporteModulo2() {
-        const ger = document.getElementById("m2Gerencia").value;
-        const area = document.getElementById("m2Area").value;
-        const sub = document.getElementById("m2SubArea").value;
-        const lista = obtenerListaFiltradaM2();
+        if (m2Generando) return;
+        m2Generando = true;
+        mostrarCargaM2(true);
 
-        if (lista.length === 0) {
-            mostrarToast("No se encontraron equipos con los filtros seleccionados.", "warning");
-            ocultarReporteM2();
-            return;
-        }
+        // setTimeout para que la UI muestre el overlay antes del cálculo
+        setTimeout(() => {
+            try {
+                const ger = document.getElementById("m2Gerencia").value;
+                const area = document.getElementById("m2Area").value;
+                const sub = document.getElementById("m2SubArea").value;
+                const lista = obtenerListaFiltradaM2();
 
-        const marcasMap = {};
-        lista.forEach(r => { const m = normalizarMarca(campo(r, "MARCA")); marcasMap[m] = (marcasMap[m] || 0) + 1; });
-        const brandRows = document.getElementById("brandRows");
-        brandRows.innerHTML = "";
-        Object.entries(marcasMap).sort((a,b)=>b[1]-a[1]).forEach(([marca, count]) => {
-            const pct = lista.length ? (count / lista.length * 100) : 0;
-            const colorMarca = obtenerColorMarca(marca);
-            brandRows.innerHTML += `<div class="brand-row"><span class="brand-dot" style="background:${colorMarca};"></span><span class="brand-name">${escapeHtml(marca)}</span><span class="brand-bar"><div style="width:${pct}%;background:${colorMarca};height:100%;"></div></span><span class="brand-count">${count}</span></div>`;
-        });
-        document.getElementById("acTotalMarcas").textContent = lista.length;
-        document.getElementById("acTotalEquipos").textContent = lista.length;
+                if (lista.length === 0) { mostrarToast("Sin resultados.", "warning"); ocultarReporteM2(); return; }
 
-        let nCpu = 0, nMon = 0, nTec = 0;
-        lista.forEach(r => {
-            const p = detectarPestana(r);
-            if (p.includes("CPU") || p.includes("LAPTO")) nCpu++;
-            else if (p.includes("MONITOR")) nMon++;
-            else if (p.includes("TECLADO")) nTec++;
-        });
-        document.getElementById("typeCpuCount").textContent = nCpu;
-        document.getElementById("typeMonitorCount").textContent = nMon;
-        document.getElementById("typeTecladoCount").textContent = nTec;
-        document.getElementById("m2AnalyticsWrapper").style.display = "grid";
+                const marcasMap = {};
+                lista.forEach(r => { const m = normalizarMarca(campo(r, "MARCA")); marcasMap[m] = (marcasMap[m] || 0) + 1; });
+                const brandRows = document.getElementById("brandRows");
+                brandRows.innerHTML = "";
+                Object.entries(marcasMap).sort((a,b)=>b[1]-a[1]).forEach(([marca, count]) => {
+                    const pct = lista.length ? (count / lista.length * 100) : 0;
+                    const colorMarca = obtenerColorMarca(marca);
+                    brandRows.innerHTML += `<div class="brand-row"><span class="brand-dot" style="background:${colorMarca};"></span><span class="brand-name">${escapeHtml(marca)}</span><span class="brand-bar"><div style="width:${pct}%;background:${colorMarca};height:100%;"></div></span><span class="brand-count">${count}</span></div>`;
+                });
+                document.getElementById("acTotalMarcas").textContent = lista.length;
+                document.getElementById("acTotalEquipos").textContent = lista.length;
 
-        let mapU = new Map();
-        lista.forEach(item => {
-            const dni = normalizarDni(campo(item, "DNI"));
-            const nom = (campo(item, "USUARIO RESPONSABLE", "USUARIO") || "SIN ASIGNAR").trim();
-            const key = dni ? `${dni}_${nom}` : nom;
-            if (!mapU.has(key)) mapU.set(key, { nom, dni: dni || "S/DNI", total: 0, cpus: [], mons: [], tecs: [] });
-            const u = mapU.get(key);
-            u.total++;
-            const cod = limpiarStr(campo(item, "SBN_CONCILIADO", "CODIGO")) || "S/C";
-            const mod = `${campo(item, "MARCA") || ""} ${campo(item, "MODELO") || ""}`.trim();
-            const card = `<div class="device-card-item"><b>${escapeHtml(cod)}</b><small>${escapeHtml(mod)}</small></div>`;
-            const p = detectarPestana(item);
-            if (p.includes("CPU") || p.includes("LAPTO")) u.cpus.push(card);
-            else if (p.includes("MONITOR")) u.mons.push(card);
-            else if (p.includes("TECLADO")) u.tecs.push(card);
-        });
+                let nCpu = 0, nMon = 0, nTec = 0;
+                lista.forEach(r => {
+                    const p = detectarPestana(r);
+                    if (p.includes("CPU") || p.includes("LAPTO")) nCpu++;
+                    else if (p.includes("MONITOR")) nMon++;
+                    else if (p.includes("TECLADO")) nTec++;
+                });
+                document.getElementById("typeCpuCount").textContent = nCpu;
+                document.getElementById("typeMonitorCount").textContent = nMon;
+                document.getElementById("typeTecladoCount").textContent = nTec;
+                document.getElementById("m2AnalyticsWrapper").style.display = "grid";
 
-        const tbody = document.getElementById("m2TableBody");
-        tbody.innerHTML = "";
-        let c = 1;
-        const filasArr = [];
-        mapU.forEach(u => {
-            const fila = `
-                <tr>
-                    <td style="text-align:center;">${c++}</td>
-                    <td><b>${escapeHtml(u.nom)}</b><br><small style="color:#64748b;">DNI: ${escapeHtml(u.dni)}</small></td>
-                    <td style="text-align:center;"><span class="badge-count-total">${u.total}</span></td>
-                    <td>${u.cpus.join("") || "-"}</td>
-                    <td>${u.mons.join("") || "-"}</td>
-                    <td>${u.tecs.join("") || "-"}</td>
-                </tr>`;
-            tbody.innerHTML += fila;
-            filasArr.push(fila);
-        });
+                let mapU = new Map();
+                lista.forEach(item => {
+                    const dni = normalizarDni(campo(item, "DNI"));
+                    const nom = (campo(item, "USUARIO RESPONSABLE", "USUARIO") || "SIN ASIGNAR").trim();
+                    const key = dni ? `${dni}_${nom}` : nom;
+                    if (!mapU.has(key)) mapU.set(key, { nom, dni: dni || "S/DNI", total: 0, cpus: [], mons: [], tecs: [] });
+                    const u = mapU.get(key);
+                    u.total++;
+                    const cod = limpiarStr(campo(item, "SBN_CONCILIADO", "CODIGO")) || "S/C";
+                    const mod = `${campo(item, "MARCA") || ""} ${campo(item, "MODELO") || ""}`.trim();
+                    const card = `<div class="device-card-item"><b>${escapeHtml(cod)}</b><small>${escapeHtml(mod)}</small></div>`;
+                    const p = detectarPestana(item);
+                    if (p.includes("CPU") || p.includes("LAPTO")) u.cpus.push(card);
+                    else if (p.includes("MONITOR")) u.mons.push(card);
+                    else if (p.includes("TECLADO")) u.tecs.push(card);
+                });
 
-        const tbodyA4 = document.getElementById("m2TableBodyA4");
-        tbodyA4.innerHTML = filasArr.join("");
+                const tbody = document.getElementById("m2TableBody");
+                tbody.innerHTML = "";
+                let c = 1;
+                const filasArr = [];
+                mapU.forEach(u => {
+                    const fila = `
+                        <tr>
+                            <td style="text-align:center;">${c++}</td>
+                            <td><b>${escapeHtml(u.nom)}</b><br><small style="color:#64748b;">DNI: ${escapeHtml(u.dni)}</small></td>
+                            <td style="text-align:center;"><span class="badge-count-total">${u.total}</span></td>
+                            <td>${u.cpus.join("") || "-"}</td>
+                            <td>${u.mons.join("") || "-"}</td>
+                            <td>${u.tecs.join("") || "-"}</td>
+                        </tr>`;
+                    tbody.innerHTML += fila;
+                    filasArr.push(fila);
+                });
+                document.getElementById("m2TableBodyA4").innerHTML = filasArr.join("");
 
-        const meta = `GERENCIA: ${ger} | ÁREA: ${area || "TODAS"} | SUBÁREA: ${sub || "TODAS"}`;
-        document.getElementById("m2Metadatos").innerText = meta;
-        document.getElementById("m2MetadatosA4").innerText = meta;
-        const resumen = `Total Servidores: ${mapU.size} | Total Equipos: ${lista.length}`;
-        document.getElementById("m2Resumen").innerText = resumen;
-        document.getElementById("m2ResumenA4").innerText = resumen;
+                const meta = `GERENCIA: ${ger} | ÁREA: ${area || "TODAS"} | SUBÁREA: ${sub || "TODAS"}`;
+                document.getElementById("m2Metadatos").innerText = meta;
+                document.getElementById("m2MetadatosA4").innerText = meta;
+                const resumen = `Total Servidores: ${mapU.size} | Total Equipos: ${lista.length}`;
+                document.getElementById("m2Resumen").innerText = resumen;
+                document.getElementById("m2ResumenA4").innerText = resumen;
 
-        document.getElementById("m2ContenedorReporte").style.display = "block";
-        document.getElementById("m2ContenedorReporteA4").style.display = "block";
-        document.getElementById("btnVistaPreviaM2").disabled = false;
-        document.getElementById("btnExcelM2").disabled = false;
+                document.getElementById("m2ContenedorReporte").style.display = "block";
+                document.getElementById("m2ContenedorReporteA4").style.display = "block";
+                document.getElementById("btnVistaPreviaM2").disabled = false;
+                document.getElementById("btnExcelM2").disabled = false;
+            } catch (e) {
+                console.error("[generarReporteModulo2]", e);
+                mostrarToast("Error al generar el reporte.", "error");
+            } finally {
+                m2Generando = false;
+                mostrarCargaM2(false);
+            }
+        }, 50);
     }
 
     function abrirModalDetalleTipo(tipo) {
         const ger = document.getElementById("m2Gerencia").value;
         const area = document.getElementById("m2Area").value;
-        const sub = document.getElementById("m2SubArea").value;
-        if (!ger) { mostrarToast("Primero genera un reporte con filtros.", "warning"); return; }
+        if (!ger) { mostrarToast("Primero genera un reporte.", "warning"); return; }
 
         const lista = obtenerListaFiltradaM2();
         const filtrados = lista.filter(r => {
@@ -1965,7 +2075,7 @@
         let htmlMarcas = "";
         const sortedMarcas = Object.entries(marcasTipoMap).sort((a,b) => b[1] - a[1]);
         if (sortedMarcas.length === 0) {
-            htmlMarcas = `<div style="text-align:center; padding:20px; color:#64748b;">No se encontraron equipos registrados de este tipo.</div>`;
+            htmlMarcas = `<div style="text-align:center; padding:20px; color:#64748b;">Sin equipos.</div>`;
         } else {
             sortedMarcas.forEach(([marca, count]) => {
                 const pct = filtrados.length ? (count / filtrados.length * 100) : 0;
@@ -1984,13 +2094,13 @@
             });
         }
 
-        const tituloModal = tipo === "CPU" ? "CPU / Laptops — Distribución por Marca" : (tipo === "MONITOR" ? "Monitores — Distribución por Marca" : "Teclados — Distribución por Marca");
+        const titulo = tipo === "CPU" ? "CPU / Laptops — Por Marca" : (tipo === "MONITOR" ? "Monitores — Por Marca" : "Teclados — Por Marca");
         const overlay = document.createElement("div");
         overlay.className = "modal-overlay";
         overlay.innerHTML = `
             <div class="modal-marcas-box">
-                <h3>💻 ${escapeHtml(tituloModal)}</h3>
-                <div class="modal-marcas-subtitle">Filtro: Gerencia: ${escapeHtml(ger)} ${area ? '· Área: ' + escapeHtml(area) : ''}</div>
+                <h3>💻 ${escapeHtml(titulo)}</h3>
+                <div class="modal-marcas-subtitle">Gerencia: ${escapeHtml(ger)} ${area ? '· Área: ' + escapeHtml(area) : ''}</div>
                 <div class="modal-marcas-list">${htmlMarcas}</div>
                 <div class="modal-footer-stats">
                     <span>TOTAL ${escapeHtml(tipo)}S</span>
@@ -2001,27 +2111,40 @@
                 </div>
             </div>`;
         document.body.appendChild(overlay);
-        overlay.querySelector("#modalDetalleCerrar").onclick = () => overlay.remove();
-        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+        const cerrar = () => {
+            overlay.remove();
+            document.removeEventListener("keydown", onEsc);
+        };
+        const onEsc = (e) => { if (e.key === "Escape") cerrar(); };
+
+        overlay.querySelector("#modalDetalleCerrar").onclick = cerrar;
+        overlay.onclick = (e) => { if (e.target === overlay) cerrar(); };
+        document.addEventListener("keydown", onEsc);
     }
 
     function confirmarDescargaExcel() {
-        // CORREGIDO: ahora respeta TODOS los filtros (Gerencia + Área + Subárea)
+        if (typeof XLSX === "undefined" || window.__XLSX_FAILED__) {
+            mostrarToast("Librería Excel no disponible. Recarga la página.", "error", 6000);
+            return;
+        }
         const lista = obtenerListaFiltradaM2();
-        if (lista.length === 0) { mostrarToast("No hay datos para exportar.", "warning"); return; }
-        const ws = XLSX.utils.json_to_sheet(lista);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Reporte");
-        XLSX.writeFile(wb, `Reporte_TIC_${Date.now()}.xlsx`);
-        mostrarToast(`Excel descargado: ${lista.length} registros.`, "success");
+        if (lista.length === 0) { mostrarToast("Sin datos.", "warning"); return; }
+        try {
+            const ws = XLSX.utils.json_to_sheet(lista);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+            XLSX.writeFile(wb, `Reporte_TIC_${Date.now()}.xlsx`);
+            mostrarToast(`Excel descargado: ${lista.length} registros.`, "success");
+        } catch (e) {
+            console.error("[Excel]", e);
+            mostrarToast("Error al generar el archivo Excel.", "error");
+        }
     }
 
     function confirmarImpresionM2() {
         const contenido = document.getElementById("m2ContenedorReporteA4");
-        if (!contenido || contenido.style.display === "none") {
-            mostrarToast("Primero genera un reporte.", "warning");
-            return;
-        }
+        if (!contenido || contenido.style.display === "none") { mostrarToast("Primero genera un reporte.", "warning"); return; }
         const clon = contenido.cloneNode(true);
         clon.style.display = "block";
         abrirVentanaImpresion(clon.outerHTML, `
@@ -2030,13 +2153,10 @@
         `);
     }
 
-    function confirmarLimpiarReporte() {
-        ocultarReporteM2();
-        mostrarToast("Reporte limpiado.", "info");
-    }
+    function confirmarLimpiarReporte() { ocultarReporteM2(); mostrarToast("Reporte limpiado.", "info"); }
 
     /* =========================================================
-       MÓDULO 3: ACTAS
+       MÓDULO 3
     ========================================================= */
     function inicializarFiltrosModulo3() {
         const selG = document.getElementById("m3Gerencia");
@@ -2093,10 +2213,19 @@
         });
     }
 
-    function m3SeleccionarServidor() {
+    async function m3SeleccionarServidor() {
         const sel = document.getElementById("m3Servidor");
         const nom = sel.value;
         if (!nom) return;
+
+        // Reset de tabla al cambiar servidor
+        const tbody = document.getElementById("actaTableBody");
+        if (tbody.rows.length > 0) {
+            const ok = await confirmar("Cambiar de servidor limpiará la tabla del acta. ¿Continuar?", "⚠️ Cambio de servidor");
+            if (!ok) { sel.value = ""; return; }
+            tbody.innerHTML = "";
+        }
+
         const dni = sel.options[sel.selectedIndex].dataset.dni || "";
         const area = document.getElementById("m3Area").value || document.getElementById("m3Gerencia").value || "OFICINA GENERAL DE TECNOLOGÍAS DE LA INFORMACIÓN";
 
@@ -2115,7 +2244,13 @@
     async function m3AgregarBienAlActa() {
         const tipoBien = document.getElementById("m3TipoBien").value;
         const query = limpiarStr(document.getElementById("m3InCodigoBien").value);
-        if (!query) { mostrarToast("Ingresa un código SBN o serie.", "warning"); return; }
+        if (!query) { mostrarToast("Ingresa un código.", "warning"); return; }
+
+        const servidorSel = document.getElementById("m3Servidor").value;
+        if (!servidorSel) {
+            const ok = await confirmar("No has seleccionado un servidor. ¿Agregar de todas formas?", "⚠️ Sin servidor");
+            if (!ok) return;
+        }
 
         const bien = inventario.find(r => {
             const sbn = limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
@@ -2124,8 +2259,19 @@
         });
 
         let detalle, serie, codigo, observacion;
-
         if (bien) {
+            // Validación de coherencia: el bien debe pertenecer al servidor seleccionado
+            if (servidorSel) {
+                const nomBien = (campo(bien, "USUARIO RESPONSABLE", "USUARIO") || "").trim();
+                if (nomBien !== servidorSel) {
+                    const ok = await confirmar(
+                        `El bien <b>${escapeHtml(query)}</b> pertenece a <b>${escapeHtml(nomBien)}</b>, no al servidor seleccionado <b>${escapeHtml(servidorSel)}</b>. ¿Agregar de todas formas?`,
+                        "⚠️ Incoherencia de servidor"
+                    );
+                    if (!ok) return;
+                }
+            }
+
             const desc = campo(bien, "DESCRIPCION DEL BIEN", "DESCRIPCION") || tipoBien;
             const marca = campo(bien, "MARCA") || "";
             const modelo = campo(bien, "MODELO") || "";
@@ -2135,15 +2281,10 @@
             const antig = campo(bien, "ANTIGUEDAD", "ANTIGÜEDAD") || "";
             observacion = antig ? `OPERATIVO - ${antig}` : "OPERATIVO";
         } else {
-            const ok = await confirmar(
-                `El código/serie "${escapeHtml(query)}" NO existe en el inventario. ¿Deseas agregarlo como registro manual?`,
-                "⚠️ Bien no encontrado"
-            );
+            const ok = await confirmar(`El código "${escapeHtml(query)}" NO existe. ¿Agregar manual?`, "⚠️ No encontrado");
             if (!ok) return;
             detalle = `${tipoBien} (REGISTRO MANUAL)`;
-            serie = query;
-            codigo = query;
-            observacion = "VERIFICAR";
+            serie = query; codigo = query; observacion = "VERIFICAR";
         }
 
         const tbody = document.getElementById("actaTableBody");
@@ -2151,11 +2292,15 @@
             const tds = tr.querySelectorAll("td");
             return tds[4] ? tds[4].textContent.trim() : "";
         });
-        if (codigosExistentes.includes(codigo)) {
-            mostrarToast(`El código ${codigo} ya está en la tabla.`, "warning");
-            return;
-        }
+        if (codigosExistentes.includes(codigo)) { mostrarToast(`El código ${codigo} ya está en la tabla.`, "warning"); return; }
 
+        agregarFilaActa(detalle, serie, codigo, observacion);
+        document.getElementById("m3InCodigoBien").value = "";
+        mostrarToast(`✅ Agregado: ${codigo}`, "success");
+    }
+
+    function agregarFilaActa(detalle, serie, codigo, observacion) {
+        const tbody = document.getElementById("actaTableBody");
         const nro = String(tbody.rows.length + 1).padStart(2, '0');
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -2164,11 +2309,24 @@
             <td contenteditable="true">1</td>
             <td contenteditable="true" style="font-family:'JetBrains Mono', monospace;">${escapeHtml(serie)}</td>
             <td contenteditable="true" style="font-family:'JetBrains Mono', monospace;">${escapeHtml(codigo)}</td>
-            <td contenteditable="true">${escapeHtml(observacion)}</td>`;
+            <td contenteditable="true">${escapeHtml(observacion)}</td>
+            <td style="text-align:center;"><button class="btn-del-row" onclick="eliminarFilaActa(this)" title="Eliminar fila">✕</button></td>`;
         tbody.appendChild(tr);
+    }
 
-        document.getElementById("m3InCodigoBien").value = "";
-        mostrarToast(`✅ Bien agregado: ${codigo} | Serie: ${serie}`, "success");
+    function eliminarFilaActa(btn) {
+        const tr = btn.closest("tr");
+        if (!tr) return;
+        tr.remove();
+        renumerarFilasActa();
+    }
+
+    function renumerarFilasActa() {
+        const tbody = document.getElementById("actaTableBody");
+        Array.from(tbody.rows).forEach((tr, idx) => {
+            const tdNro = tr.cells[0];
+            if (tdNro) tdNro.textContent = String(idx + 1).padStart(2, '0');
+        });
     }
 
     function alternarModoActa(modo) {
@@ -2203,7 +2361,7 @@
     async function confirmarLimpiarActa() {
         const tbody = document.getElementById("actaTableBody");
         if (tbody.rows.length === 0) { mostrarToast("La tabla ya está vacía.", "info"); return; }
-        const ok = await confirmar("Se eliminarán todos los bienes de la tabla del acta. ¿Continuar?", "🧹 Limpiar Tabla del Acta");
+        const ok = await confirmar("Se eliminarán todos los bienes. ¿Continuar?", "🧹 Limpiar");
         if (!ok) return;
         tbody.innerHTML = "";
         mostrarToast("Acta limpiada.", "info");
@@ -2211,56 +2369,56 @@
 
     function imprimirActa() {
         const tbody = document.getElementById("actaTableBody");
-        if (tbody.rows.length === 0) {
-            mostrarToast("Agrega al menos un bien antes de imprimir.", "warning");
-            return;
-        }
+        if (tbody.rows.length === 0) { mostrarToast("Agrega al menos un bien.", "warning"); return; }
 
         const clon = document.getElementById("actaDocumentoImpresion").cloneNode(true);
         clon.querySelectorAll("[contenteditable]").forEach(el => el.removeAttribute("contenteditable"));
+        // Ocultar columna de acción en impresión
+        clon.querySelectorAll(".btn-del-row").forEach(el => el.remove());
+        // Ajustar ancho de columnas: quitar la columna de acción del thead
+        const thead = clon.querySelector("thead tr");
+        if (thead && thead.cells.length > 6) thead.deleteCell(6);
+        // Ajustar filas
+        clon.querySelectorAll("tbody tr").forEach(tr => {
+            if (tr.cells.length > 6) tr.deleteCell(6);
+        });
 
         abrirVentanaImpresion(clon.outerHTML, `
             @page { size: A4 portrait; margin: 0; }
             body { margin: 0; padding: 0; background: #fff; }
             .acta-documento-a4 {
-                width: 210mm !important;
-                min-height: 297mm !important;
-                height: auto !important;
-                max-height: none !important;
+                width: 210mm !important; min-height: 297mm !important;
+                height: auto !important; max-height: none !important;
                 padding: 15mm 18mm 95mm 22mm !important;
-                box-shadow: none !important;
-                margin: 0 auto !important;
-                position: relative !important;
-                overflow: visible !important;
+                box-shadow: none !important; margin: 0 auto !important;
+                position: relative !important; overflow: visible !important;
                 page-break-inside: auto !important;
             }
-            .acta-bloque-pie {
-                position: absolute !important;
-                left: 22mm !important;
-                right: 18mm !important;
-                bottom: 12mm !important;
-                page-break-inside: avoid !important;
-            }
+            .acta-bloque-pie { position: absolute !important; left: 22mm !important; right: 18mm !important; bottom: 12mm !important; page-break-inside: avoid !important; }
             .acta-table { page-break-inside: auto !important; }
             .acta-table tr { page-break-inside: avoid !important; }
             .acta-table thead { display: table-header-group !important; }
-            .acta-checks-container,
-            .acta-closing-phrase,
-            .acta-signatures-box,
-            .acta-footer-note { page-break-inside: avoid !important; }
+            .acta-checks-container, .acta-closing-phrase, .acta-signatures-box, .acta-footer-note { page-break-inside: avoid !important; }
             .acta-footer-note { text-align: center !important; }
         `);
     }
 
     /* =========================================================
-       MOTOR DE IMPRESIÓN
+       MOTOR DE IMPRESIÓN (CORREGIDO: usa base URL para logo)
     ========================================================= */
     function abrirVentanaImpresion(contenidoHtml, estilosAdicionales = '') {
         const printWindow = window.open('', '_blank', 'width=950,height=850');
-        if (!printWindow) {
-            mostrarToast("Permite las ventanas emergentes para imprimir.", "warning");
-            return;
-        }
+        if (!printWindow) { mostrarToast("Permite ventanas emergentes.", "warning"); return; }
+
+        // Convertir rutas relativas de imágenes a absolutas para que la ventana about:blank las resuelva
+        const baseHref = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+        let contenidoCorregido = contenidoHtml;
+        // Reemplazar src="logo.png" por URL absoluta
+        contenidoCorregido = contenidoCorregido.replace(/src="logo\.png"/g, `src="${baseHref}logo.png"`);
+        contenidoCorregido = contenidoCorregido.replace(/src='logo\.png'/g, `src="${baseHref}logo.png"`);
+        // Añadir <base> por seguridad
+        contenidoCorregido = contenidoCorregido.replace(/<body>/, `<body><base href="${baseHref}">`);
+
         printWindow.document.open();
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -2271,13 +2429,7 @@
                 <style>
                     * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }
                     body { background: #fff; padding: 0; margin: 0; color: #000; }
-
-                    .acta-documento-a4 {
-                        width: 210mm; min-height: 297mm; box-sizing: border-box;
-                        padding: 15mm 18mm 95mm 22mm; background: #fff; color: #000;
-                        font-family: Arial, Helvetica, sans-serif; font-size: 9pt; line-height: 1.35;
-                        position: relative;
-                    }
+                    .acta-documento-a4 { width: 210mm; min-height: 297mm; box-sizing: border-box; padding: 15mm 18mm 95mm 22mm; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-size: 9pt; line-height: 1.35; position: relative; }
                     .acta-header-top { display: flex; align-items: center; margin-bottom: 3mm; }
                     .acta-logo-img { height: 38px; width: auto; object-fit: contain; }
                     .acta-title { text-align: center; font-size: 10pt; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; }
@@ -2298,7 +2450,6 @@
                     .sig-line-top { border-top: 1px solid #000; width: 82%; margin: 0 auto 5px auto; }
                     .sig-meta-line { font-size: 8.5pt; text-align: left; margin-left: 9%; line-height: 1.3; }
                     .acta-footer-note { font-size: 7.5pt; color: #333; font-style: italic; border-top: 1px solid #ccc; padding-top: 2mm; text-align: center; margin: 0; }
-
                     .reporte-a4-documento { width: 100%; padding: 0; margin: 0; }
                     .reporte-a4-header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #881337; padding-bottom: 10px; margin-bottom: 15px; }
                     .reporte-logo-img { height: 40px; }
@@ -2308,19 +2459,15 @@
                     .reporte-a4-table th, .reporte-a4-table td { border: 1px solid #94a3b8; padding: 6px 5px; text-align: left; vertical-align: top; word-break: break-word; }
                     .reporte-a4-table th { background: #881337; color: #fff; text-align: center; font-weight: bold; }
                     .device-card-item { border: 1px solid #cbd5e1; padding: 4px 6px; margin-bottom: 3px; font-size: 8pt; }
-
                     @page { size: A4 portrait; margin: 0; }
                     @media print { body { margin: 0; } }
                     ${estilosAdicionales}
                 </style>
             </head>
             <body>
-                ${contenidoHtml}
+                ${contenidoCorregido}
                 <script>
-                    window.onload = function() {
-                        window.focus();
-                        setTimeout(function() { window.print(); }, 400);
-                    };
+                    window.onload = function() { window.focus(); setTimeout(function() { window.print(); }, 500); };
                     window.onafterprint = function() { setTimeout(function() { window.close(); }, 500); };
                 <\/script>
             </body>
@@ -2330,20 +2477,25 @@
     }
 
     /* =========================================================
-       LISTENERS GLOBALES PARA "hayCambiosSinGuardar"
+       LISTENERS GLOBALES
     ========================================================= */
     function activarListenersCambios() {
-        const idsEditables = ["editDni", "editUsuario", "editArea", "editSubArea",
-                              "tecDesc", "tecMarca", "tecModelo", "tecSerie", "tecAmbiente",
-                              "tecAntiguedad", "tecProcesador", "tecRam", "tecDisco", "tecIp"];
-        idsEditables.forEach(id => {
+        const ids = ["editDni", "editUsuario", "editArea", "editSubArea",
+                     "tecDesc", "tecMarca", "tecModelo", "tecSerie", "tecAmbiente",
+                     "tecAntiguedad", "tecProcesador", "tecRam", "tecDisco", "tecIp"];
+        ids.forEach(id => {
             const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener("input", () => { hayCambiosSinGuardar = true; });
-            }
+            if (el) el.addEventListener("input", () => { if (puedeEditar) hayCambiosSinGuardar = true; });
         });
+
+        // Validación en vivo del DNI (solo dígitos)
+        const editDni = document.getElementById("editDni");
+        if (editDni) {
+            editDni.addEventListener("input", () => {
+                editDni.value = editDni.value.replace(/[^\d]/g, "").slice(0, 12);
+            });
+        }
     }
-    document.addEventListener("DOMContentLoaded", activarListenersCambios);
 </script>
 
 </body>
