@@ -749,6 +749,18 @@
                 <div class="vertical-pane">
                     <div class="pane-title">Gestión y Reasignación</div>
                     <div id="fAiBox" style="padding:12px; border-radius:6px; font-size:12px; margin-bottom:14px; border:1px solid;"></div>
+
+                    <!-- NUEVO: Checkbox Aplicar a todos los bienes del servidor -->
+                    <div id="boxAplicarTodos" style="background:#fef3c7; border:1.5px solid #fbbf24; border-radius:6px; padding:10px 14px; margin-bottom:14px; display:none;">
+                        <label style="font-size:11.5px; font-weight:700; color:#92400e; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="chkAplicarTodos" onchange="toggleAplicarTodos()" style="width:16px; height:16px; accent-color:#d97706;">
+                            ⚠️ Aplicar cambio de DNI / Nombre a TODOS los bienes (<span id="lblCantBienes">0</span>)
+                        </label>
+                        <div style="font-size:10.5px; color:#92400e; margin-top:6px; padding-left:24px; line-height:1.4;">
+                            Si está marcado, el nuevo <b>DNI, Nombre, Área y Sub-Área</b> se replicarán a <b>todos</b> los bienes asignados a este servidor. Si está desmarcado, solo se actualizará el bien seleccionado.
+                        </div>
+                    </div>
+
                     <div class="field-group"><label>DNI del Servidor:</label><input type="text" id="editDni" class="input-control" maxlength="8" inputmode="numeric"></div>
                     <div class="field-group"><label>Nombres y Apellidos:</label><input type="text" id="editUsuario" class="input-control" maxlength="120"></div>
                     <div class="field-group"><label>Área / Dependencia:</label><input type="text" id="editArea" class="input-control" maxlength="150" disabled></div>
@@ -1006,6 +1018,8 @@
     let debounceTimers = {};
     let loginEnProceso = false;
     let m2Generando = false;
+    /* NUEVO: Flag global para aplicar cambios a todos los bienes del servidor */
+    let aplicarATodosLosBienes = false;
 
     const coloresMarcasCatalogo = {
         "HP": "#0284c7", "LENOVO": "#dc2626", "DELL": "#0d9488", "ACER": "#16a34a",
@@ -1027,9 +1041,8 @@
     const limpiarStr = (v) => String(v || "").replace(/\.0$/, "").trim();
 
     function validarDniPeruano(dni) {
-        // Acepta DNI de 8 dígitos o carné de extranjería (hasta 12)
         const d = String(dni || "").trim();
-        if (!d) return true; // vacío es válido (no obligatorio)
+        if (!d) return true;
         return /^\d{8,12}$/.test(d);
     }
 
@@ -1053,13 +1066,25 @@
     }
 
     function detectarPestana(row) {
-        const desc = String(campo(row, "DESCRIPCION DEL BIEN", "DESCRIPCION") || "").toUpperCase();
-        if (desc.includes("LAPTOP") || desc.includes("PORTATIL")) return "LAPTOP";
-        if (desc.includes("CPU")) return "CPU";
-        if (desc.includes("MONITOR")) return "MONITOR";
-        if (desc.includes("TECLADO")) return "TECLADO";
-        return "OTROS";
+  // 1. Si el backend ya nos dijo el tipo, usarlo
+  const tipoBackend = String(campo(row, "TIPO_BIEN") || "").toUpperCase().trim();
+  if (tipoBackend) {
+    // Si es CPU pero la descripción dice LAPTOP, corregir
+    if (tipoBackend === "CPU") {
+      const desc = String(campo(row, "DESCRIPCION DEL BIEN", "DESCRIPCION") || "").toUpperCase();
+      if (desc.includes("LAPTOP") || desc.includes("PORTATIL")) return "LAPTOP";
     }
+    return tipoBackend;
+  }
+
+  // 2. Fallback: adivinar por descripción (si el backend no envía TIPO_BIEN)
+  const desc = String(campo(row, "DESCRIPCION DEL BIEN", "DESCRIPCION") || "").toUpperCase();
+  if (desc.includes("LAPTOP") || desc.includes("PORTATIL")) return "LAPTOP";
+  if (desc.includes("MONITOR")) return "MONITOR";
+  if (desc.includes("TECLADO")) return "TECLADO";
+  if (desc.includes("CPU")) return "CPU";
+  return "OTROS";
+}
 
     function normalizarMarca(m) {
         let s = String(m || "").trim().toUpperCase();
@@ -1173,6 +1198,39 @@
     }
 
     /* =========================================================
+       NUEVO: TOGGLE APLICAR A TODOS LOS BIENES
+    ========================================================= */
+    function toggleAplicarTodos() {
+        if (!puedeEditar) {
+            const chk = document.getElementById("chkAplicarTodos");
+            if (chk) chk.checked = false;
+            return;
+        }
+        aplicarATodosLosBienes = document.getElementById("chkAplicarTodos").checked;
+        const box = document.getElementById("boxAplicarTodos");
+        if (!box) return;
+        if (aplicarATodosLosBienes) {
+            box.style.background = "#fee2e2";
+            box.style.borderColor = "#f87171";
+        } else {
+            box.style.background = "#fef3c7";
+            box.style.borderColor = "#fbbf24";
+        }
+    }
+
+    function resetearAplicarTodos() {
+        aplicarATodosLosBienes = false;
+        const chk = document.getElementById("chkAplicarTodos");
+        if (chk) chk.checked = false;
+        const box = document.getElementById("boxAplicarTodos");
+        if (box) {
+            box.style.display = "none";
+            box.style.background = "#fef3c7";
+            box.style.borderColor = "#fbbf24";
+        }
+    }
+
+    /* =========================================================
        APLICAR PERMISOS SEGÚN ROL
     ========================================================= */
     function aplicarPermisos() {
@@ -1203,6 +1261,7 @@
                 const el = document.getElementById(id);
                 if (el) el.disabled = true;
             });
+            resetearAplicarTodos();
         } else {
             const chk = document.getElementById("chkEditarTodo");
             if (chk) chk.disabled = false;
@@ -1253,7 +1312,6 @@
             try {
                 sessionStorage.setItem(CONFIG.sessionKey, sessionToken);
                 sessionStorage.setItem(CONFIG.sessionUserKey, JSON.stringify(sessionUser));
-                // Persistencia multipestaña
                 localStorage.setItem(CONFIG.sessionKey, sessionToken);
                 localStorage.setItem(CONFIG.sessionUserKey, JSON.stringify(sessionUser));
             } catch (e) {}
@@ -1413,6 +1471,7 @@
         sessionToken = null;
         sessionUser = null;
         puedeEditar = false;
+        aplicarATodosLosBienes = false;
 
         try { sessionStorage.removeItem(CONFIG.sessionKey); } catch (e) {}
         try { sessionStorage.removeItem(CONFIG.sessionUserKey); } catch (e) {}
@@ -1432,6 +1491,7 @@
         document.getElementById("actaTableBody").innerHTML = "";
         document.getElementById("btnCambiarPass").style.display = "none";
         document.getElementById("bannerSoloLectura").style.display = "none";
+        resetearAplicarTodos();
 
         document.getElementById("m2Gerencia").innerHTML = '<option value="">-- Seleccione Gerencia --</option>';
         document.getElementById("m2Area").innerHTML = '<option value="">-- Todas las Áreas --</option>';
@@ -1520,7 +1580,6 @@
 
     window.addEventListener("DOMContentLoaded", () => {
         try {
-            // Prioridad: sessionStorage, luego localStorage (multipestaña)
             let t = sessionStorage.getItem(CONFIG.sessionKey);
             let u = sessionStorage.getItem(CONFIG.sessionUserKey);
             if (!t) t = localStorage.getItem(CONFIG.sessionKey);
@@ -1591,49 +1650,67 @@
     /* =========================================================
        MÓDULO 1: BÚSQUEDA
     ========================================================= */
-    function buscarPorPersonaAuto(val) {
-        const query = String(val || "").trim().toUpperCase();
-        if (query.length < 3) return;
-        const debounced = debounce("personaAuto", () => {
-            let dniQuery = "";
-            const dniMatch = query.match(/\(DNI:\s*([^)]+)\)/);
-            if (dniMatch) dniQuery = dniMatch[1].trim();
-            else if (/^\d{7,}$/.test(query.replace(/\s/g, ""))) dniQuery = query.replace(/\s/g, "");
+// Normaliza texto: quita tildes, comas, espacios múltiples, mayúsculas
+function normalizarTextoBusqueda(s) {
+  return String(s || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita tildes
+    .replace(/[,;]/g, " ")                             // comas → espacio
+    .replace(/\s+/g, " ")                              // espacios múltiples
+    .trim()
+    .toUpperCase();
+}
 
-            const coincidencia = inventario.filter(r => {
-                const dni = normalizarDni(campo(r, "DNI"));
-                const nom = (campo(r, "USUARIO RESPONSABLE", "USUARIO") || "").toUpperCase();
-                if (dniQuery) return dni === dniQuery;
-                return nom.includes(query);
-            });
-            if (coincidencia.length > 0) {
-                servidorActualSeleccionado = coincidencia[0];
-                equiposDelServidor = coincidencia;
-                mostrarFichaServidor(servidorActualSeleccionado, equiposDelServidor);
-            }
-        }, 250);
-        debounced();
+// Extrae tokens del nombre para búsqueda flexible (orden indistinto)
+function tokensNombre(s) {
+  return normalizarTextoBusqueda(s).split(" ").filter(t => t.length >= 2);
+}
+
+function coincidePersona(row, queryRaw) {
+  const query = normalizarTextoBusqueda(queryRaw);
+  if (!query) return false;
+
+  const dniRow = normalizarDni(campo(row, "DNI"));
+  const nomRow = normalizarTextoBusqueda(campo(row, "USUARIO RESPONSABLE", "USUARIO"));
+
+  // 1. Coincidencia exacta por DNI
+  if (/^\d{7,12}$/.test(query.replace(/\s/g, ""))) {
+    return dniRow === query.replace(/\s/g, "");
+  }
+
+  // 2. Coincidencia exacta por nombre normalizado
+  if (nomRow === query) return true;
+
+  // 3. Coincidencia por tokens (todos los tokens del query deben estar en el nombre)
+  const qTokens = tokensNombre(query);
+  if (qTokens.length === 0) return false;
+  return qTokens.every(t => nomRow.includes(t));
+}
+
+function buscarPorPersonaAuto(val) {
+  const query = String(val || "").trim();
+  if (query.length < 3) return;
+  const debounced = debounce("personaAuto", () => {
+    const coincidencia = inventario.filter(r => coincidePersona(r, query));
+    if (coincidencia.length > 0) {
+      servidorActualSeleccionado = coincidencia[0];
+      equiposDelServidor = coincidencia;
+      mostrarFichaServidor(servidorActualSeleccionado, equiposDelServidor);
     }
+  }, 250);
+  debounced();
+}
 
-    function buscarPorPersona() {
-        const query = document.getElementById("inPersona").value.trim().toUpperCase();
-        if (!query) { mostrarToast("Ingresa un DNI o nombre.", "warning"); return; }
-        let dniQuery = "";
-        const dniMatch = query.match(/\(DNI:\s*([^)]+)\)/);
-        if (dniMatch) dniQuery = dniMatch[1].trim();
-        else if (/^\d{7,}$/.test(query.replace(/\s/g, ""))) dniQuery = query.replace(/\s/g, "");
+function buscarPorPersona() {
+  const query = document.getElementById("inPersona").value.trim();
+  if (!query) { mostrarToast("Ingresa un DNI o nombre.", "warning"); return; }
 
-        const coincidencia = inventario.filter(r => {
-            const dni = normalizarDni(campo(r, "DNI"));
-            const nom = (campo(r, "USUARIO RESPONSABLE", "USUARIO") || "").toUpperCase();
-            if (dniQuery) return dni === dniQuery;
-            return nom.includes(query);
-        });
-        if (!coincidencia.length) { mostrarToast("No se encontraron bienes.", "warning"); return; }
-        servidorActualSeleccionado = coincidencia[0];
-        equiposDelServidor = coincidencia;
-        mostrarFichaServidor(servidorActualSeleccionado, equiposDelServidor);
-    }
+  const coincidencia = inventario.filter(r => coincidePersona(r, query));
+  if (!coincidencia.length) { mostrarToast("No se encontraron bienes para: " + query, "warning"); return; }
+
+  servidorActualSeleccionado = coincidencia[0];
+  equiposDelServidor = coincidencia;
+  mostrarFichaServidor(servidorActualSeleccionado, equiposDelServidor);
+}
 
     function buscarPorCodigoAuto(val) {
         const cod = limpiarStr(val);
@@ -1725,6 +1802,9 @@
             selBien.value = "0";
         }
 
+        // Reset del checkbox antes de cambioBienSeleccionado
+        resetearAplicarTodos();
+
         cambioBienSeleccionado();
         document.getElementById("fichaConsultaCompleta").style.display = "block";
         document.getElementById("fichaConsultaCompleta").scrollIntoView({ behavior: 'smooth' });
@@ -1768,6 +1848,22 @@
         aiBox.innerHTML = `<b>🟢 BIEN OPERATIVO</b><br>Antigüedad: ${escapeHtml(document.getElementById("tecAntiguedad").value)}`;
 
         hayCambiosSinGuardar = false;
+
+        // NUEVO: Mostrar checkbox de aplicar a todos solo si el servidor tiene >1 bien
+        const boxAplicar = document.getElementById("boxAplicarTodos");
+        const lblCant = document.getElementById("lblCantBienes");
+        if (boxAplicar && lblCant) {
+            const cant = equiposDelServidor ? equiposDelServidor.length : 0;
+            lblCant.textContent = cant;
+            if (cant > 1 && puedeEditar) {
+                boxAplicar.style.display = "block";
+            } else {
+                boxAplicar.style.display = "none";
+                const chk = document.getElementById("chkAplicarTodos");
+                if (chk) chk.checked = false;
+                aplicarATodosLosBienes = false;
+            }
+        }
     }
 
     /* =========================================================
@@ -1805,7 +1901,21 @@
             }
         }
 
-        const ok = await confirmar(`Se guardarán los cambios del bien <b>${escapeHtml(codigoBien)}</b>. ¿Continuar?`, "💾 Confirmar guardado");
+        // NUEVO: Recolectar todos los códigos si "aplicar a todos" está activo
+        let codigosAfectados = [codigoBien];
+        if (aplicarATodosLosBienes && equiposDelServidor && equiposDelServidor.length > 1) {
+            codigosAfectados = equiposDelServidor.map(b =>
+                limpiarStr(campo(b, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"))
+            ).filter(Boolean);
+            if (codigoBien && !codigosAfectados.includes(codigoBien)) {
+                codigosAfectados.unshift(codigoBien);
+            }
+        }
+
+        const mensajeConfirm = (aplicarATodosLosBienes && codigosAfectados.length > 1)
+            ? `Se actualizarán <b>${codigosAfectados.length} bienes</b> del servidor con el nuevo DNI/Nombre. ¿Continuar?`
+            : `Se guardarán los cambios del bien <b>${escapeHtml(codigoBien)}</b>. ¿Continuar?`;
+        const ok = await confirmar(mensajeConfirm, "💾 Confirmar guardado");
         if (!ok) return;
 
         const notice = document.getElementById("saveNotice");
@@ -1821,6 +1931,8 @@
             accion: "actualizar",
             token: sessionToken,
             codigo: codigoBien,
+            codigos: codigosAfectados,
+            aplicarATodos: aplicarATodosLosBienes && codigosAfectados.length > 1,
             dniAntiguo: dniAntiguo,
             nuevoUsuario: nuevoUser,
             nuevoDni: nuevoDni,
@@ -1854,6 +1966,19 @@
             bienEnEdicion.AREA = nuevaArea;
             bienEnEdicion.SUBAREA = nuevaSubArea;
 
+            // NUEVO: Si aplicó a todos, actualizar todos los bienes del servidor en memoria
+            if (aplicarATodosLosBienes && codigosAfectados.length > 1) {
+                inventario.forEach(r => {
+                    const cod = limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
+                    if (codigosAfectados.includes(cod)) {
+                        r.USUARIO_RESPONSABLE = nuevoUser;
+                        r.DNI = nuevoDni;
+                        r.AREA = nuevaArea;
+                        r.SUBAREA = nuevaSubArea;
+                    }
+                });
+            }
+
             if (actualizarTecnicos) {
                 bienEnEdicion.DESCRIPCION_DEL_BIEN = payload.descripcion;
                 bienEnEdicion.MARCA = payload.marca;
@@ -1873,8 +1998,16 @@
 
             hayCambiosSinGuardar = false;
             notice.style.color = "#15803d";
-            notice.innerText = "✅ ¡Actualizado!";
-            mostrarToast("Bien actualizado correctamente.", "success");
+            const msgOk = (aplicarATodosLosBienes && codigosAfectados.length > 1)
+                ? `✅ ¡${codigosAfectados.length} bienes actualizados!`
+                : "✅ ¡Actualizado!";
+            notice.innerText = msgOk;
+            mostrarToast(
+                (aplicarATodosLosBienes && codigosAfectados.length > 1)
+                    ? `${codigosAfectados.length} bienes actualizados correctamente.`
+                    : "Bien actualizado correctamente.",
+                "success"
+            );
             cambioBienSeleccionado();
             setTimeout(() => { notice.innerText = ""; }, 4000);
         } catch (e) {
@@ -1900,6 +2033,7 @@
         edicionTotalActiva = false;
         document.getElementById("chkEditarTodo").checked = false;
         hayCambiosSinGuardar = false;
+        resetearAplicarTodos();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -1964,7 +2098,6 @@
         m2Generando = true;
         mostrarCargaM2(true);
 
-        // setTimeout para que la UI muestre el overlay antes del cálculo
         setTimeout(() => {
             try {
                 const ger = document.getElementById("m2Gerencia").value;
@@ -2218,7 +2351,6 @@
         const nom = sel.value;
         if (!nom) return;
 
-        // Reset de tabla al cambiar servidor
         const tbody = document.getElementById("actaTableBody");
         if (tbody.rows.length > 0) {
             const ok = await confirmar("Cambiar de servidor limpiará la tabla del acta. ¿Continuar?", "⚠️ Cambio de servidor");
@@ -2260,7 +2392,6 @@
 
         let detalle, serie, codigo, observacion;
         if (bien) {
-            // Validación de coherencia: el bien debe pertenecer al servidor seleccionado
             if (servidorSel) {
                 const nomBien = (campo(bien, "USUARIO RESPONSABLE", "USUARIO") || "").trim();
                 if (nomBien !== servidorSel) {
@@ -2373,12 +2504,9 @@
 
         const clon = document.getElementById("actaDocumentoImpresion").cloneNode(true);
         clon.querySelectorAll("[contenteditable]").forEach(el => el.removeAttribute("contenteditable"));
-        // Ocultar columna de acción en impresión
         clon.querySelectorAll(".btn-del-row").forEach(el => el.remove());
-        // Ajustar ancho de columnas: quitar la columna de acción del thead
         const thead = clon.querySelector("thead tr");
         if (thead && thead.cells.length > 6) thead.deleteCell(6);
-        // Ajustar filas
         clon.querySelectorAll("tbody tr").forEach(tr => {
             if (tr.cells.length > 6) tr.deleteCell(6);
         });
@@ -2404,19 +2532,16 @@
     }
 
     /* =========================================================
-       MOTOR DE IMPRESIÓN (CORREGIDO: usa base URL para logo)
+       MOTOR DE IMPRESIÓN
     ========================================================= */
     function abrirVentanaImpresion(contenidoHtml, estilosAdicionales = '') {
         const printWindow = window.open('', '_blank', 'width=950,height=850');
         if (!printWindow) { mostrarToast("Permite ventanas emergentes.", "warning"); return; }
 
-        // Convertir rutas relativas de imágenes a absolutas para que la ventana about:blank las resuelva
         const baseHref = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
         let contenidoCorregido = contenidoHtml;
-        // Reemplazar src="logo.png" por URL absoluta
         contenidoCorregido = contenidoCorregido.replace(/src="logo\.png"/g, `src="${baseHref}logo.png"`);
         contenidoCorregido = contenidoCorregido.replace(/src='logo\.png'/g, `src="${baseHref}logo.png"`);
-        // Añadir <base> por seguridad
         contenidoCorregido = contenidoCorregido.replace(/<body>/, `<body><base href="${baseHref}">`);
 
         printWindow.document.open();
@@ -2488,7 +2613,6 @@
             if (el) el.addEventListener("input", () => { if (puedeEditar) hayCambiosSinGuardar = true; });
         });
 
-        // Validación en vivo del DNI (solo dígitos)
         const editDni = document.getElementById("editDni");
         if (editDni) {
             editDni.addEventListener("input", () => {
