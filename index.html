@@ -1247,10 +1247,10 @@
         const btnPass = document.getElementById("btnCambiarPass");
         if (btnPass) btnPass.style.display = esEditor ? "inline-flex" : "none";
 
-        ["editDni", "editUsuario"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.disabled = !esEditor;
-        });
+       ["editDni", "editUsuario", "editArea", "editSubArea"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !esEditor;
+});
 
         if (!esEditor) {
             const chk = document.getElementById("chkEditarTodo");
@@ -1816,6 +1816,9 @@ function buscarPorPersona() {
         ["tecDesc", "tecMarca", "tecModelo", "tecSerie", "tecAmbiente", "tecAntiguedad", "tecProcesador", "tecRam", "tecDisco", "tecIp"].forEach(id => {
             document.getElementById(id).disabled = !edicionTotalActiva;
         });
+         document.getElementById("editArea").disabled = !edicionTotalActiva;
+         document.getElementById("editSubArea").disabled = !edicionTotalActiva;
+        
     }
 
     function cambioBienSeleccionado() {
