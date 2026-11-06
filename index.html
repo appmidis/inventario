@@ -510,35 +510,35 @@
     .usuario-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
     .usuario-actions .btn { min-height: 32px; padding: 6px 10px; font-size: 10.5px; flex: 1; }
 
-    /* ==================== SCANNER MODAL (NUEVO) ==================== */
+       /* ==================== SCANNER MODAL (V2) ==================== */
     .scanner-modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.9);
+        background: rgba(15, 23, 42, 0.92);
         backdrop-filter: blur(8px);
         z-index: 100002;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 20px;
+        padding: 16px;
     }
     .scanner-container {
         width: 100%;
-        max-width: 500px;
+        max-width: 520px;
         background: #fff;
         border-radius: var(--radius-lg);
         overflow: hidden;
         box-shadow: var(--shadow-xl);
         display: flex;
         flex-direction: column;
-        max-height: 90vh;
+        max-height: 95vh;
     }
     .scanner-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 16px 20px;
+        padding: 14px 18px;
         background: var(--primary);
         color: #fff;
         flex-shrink: 0;
@@ -567,6 +567,7 @@
         flex-shrink: 0;
     }
     .scanner-close-btn:hover { background: rgba(255,255,255,0.3); }
+
     .scanner-video-wrapper {
         position: relative;
         width: 100%;
@@ -575,11 +576,21 @@
         overflow: hidden;
         flex-shrink: 0;
     }
-    .scanner-video-wrapper video {
+    .scanner-video-wrapper video,
+    .scanner-video-wrapper canvas#scannerSnapshot {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
+    .scanner-video-wrapper canvas#scannerSnapshot {
+        display: none;
+        z-index: 5;
+    }
+    .scanner-video-wrapper.snapshot-mode canvas#scannerSnapshot { display: block; }
+    .scanner-video-wrapper.snapshot-mode .scanner-overlay-guide { display: none; }
+
     .scanner-overlay-guide {
         position: absolute;
         inset: 0;
@@ -587,10 +598,11 @@
         align-items: center;
         justify-content: center;
         pointer-events: none;
+        z-index: 3;
     }
     .scanner-guide-box {
-        width: 70%;
-        height: 35%;
+        width: 75%;
+        height: 38%;
         border: 3px solid rgba(59, 130, 246, 0.9);
         border-radius: 12px;
         box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
@@ -600,28 +612,23 @@
     .scanner-guide-box::after {
         content: '';
         position: absolute;
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
         border: 3px solid #3b82f6;
     }
     .scanner-guide-box::before {
-        top: -3px;
-        left: -3px;
-        border-right: none;
-        border-bottom: none;
+        top: -3px; left: -3px;
+        border-right: none; border-bottom: none;
         border-radius: 12px 0 0 0;
     }
     .scanner-guide-box::after {
-        bottom: -3px;
-        right: -3px;
-        border-left: none;
-        border-top: none;
+        bottom: -3px; right: -3px;
+        border-left: none; border-top: none;
         border-radius: 0 0 12px 0;
     }
     .scanner-laser-line {
         position: absolute;
-        left: 5%;
-        right: 5%;
+        left: 5%; right: 5%;
         height: 2px;
         background: linear-gradient(90deg, transparent, #ef4444, transparent);
         animation: laserScan 2s ease-in-out infinite;
@@ -631,15 +638,30 @@
         0%, 100% { top: 25%; }
         50% { top: 75%; }
     }
+
+    .scanner-flash {
+        position: absolute;
+        inset: 0;
+        background: #fff;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 10;
+        transition: opacity 0.15s ease;
+    }
+    .scanner-flash.flash-active {
+        opacity: 1;
+        transition: opacity 0.05s ease;
+    }
+
     .scanner-info {
-        padding: 16px 20px;
+        padding: 14px 18px;
         background: var(--bg-alt);
         flex-shrink: 0;
     }
-    .scanner-info p {
+    .scanner-info .scanner-hint {
         font-size: 12px;
         color: var(--text-muted);
-        margin: 0 0 12px;
+        margin: 0 0 10px;
         text-align: center;
         font-weight: 600;
     }
@@ -656,6 +678,7 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
+        margin-bottom: 10px;
     }
     .scanner-status.scanning {
         background: #fef3c7;
@@ -672,10 +695,66 @@
         border-color: #ef4444;
         color: #991b1b;
     }
+
+    /* Botones de acción del escáner */
+    .scanner-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .scanner-actions .btn {
+        flex: 1;
+        min-width: 100px;
+        min-height: 46px;
+        font-size: 13px;
+    }
+    .btn-capture {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+        flex: 2 !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+    }
+    .btn-capture:hover:not(:disabled) {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.55);
+    }
+    .btn-capture:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .btn-retry {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #fff;
+        box-shadow: 0 3px 10px rgba(245, 158, 11, 0.3);
+    }
+    .btn-retry:hover:not(:disabled) {
+        background: linear-gradient(135deg, #d97706, #b45309);
+    }
+    .btn-flash {
+        background: linear-gradient(135deg, #facc15, #eab308);
+        color: #422006;
+        box-shadow: 0 3px 10px rgba(234, 179, 8, 0.3);
+        flex: 0 0 auto !important;
+        min-width: 46px !important;
+        max-width: 46px;
+        font-size: 18px !important;
+    }
+    .btn-flash:hover:not(:disabled) {
+        background: linear-gradient(135deg, #eab308, #ca8a04);
+    }
+    .btn-flash.flash-on {
+        background: linear-gradient(135deg, #fde047, #facc15);
+        box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5);
+    }
+
     .scanner-manual-input {
         display: flex;
         gap: 8px;
-        margin-top: 12px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #cbd5e1;
     }
     .scanner-manual-input input {
         flex: 1;
@@ -689,6 +768,28 @@
     .scanner-manual-input input:focus {
         border-color: var(--accent);
         box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+    }
+    .scanner-manual-input .btn {
+        min-height: 42px;
+    }
+    .scanner-manual-label {
+        font-size: 10.5px;
+        color: var(--text-muted);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    @media (max-width: 480px) {
+        .scanner-container { max-height: 98vh; border-radius: 12px; }
+        .scanner-header { padding: 10px 14px; }
+        .scanner-header h3 { font-size: 13px; }
+        .scanner-info { padding: 10px 14px; }
+        .scanner-actions .btn { font-size: 12px; min-height: 44px; }
+        .btn-capture { font-size: 14px !important; }
+        .scanner-status { font-size: 12px; padding: 8px; }
     }
 
     /* Botón de cámara en búsqueda */
@@ -1721,26 +1822,44 @@
     </main>
 </div>
 
-<!-- ================= SCANNER MODAL (NUEVO) ================= -->
+<!-- ================= SCANNER MODAL (V2) ================= -->
 <div id="scannerModal" class="scanner-modal-overlay" style="display:none;">
     <div class="scanner-container">
         <div class="scanner-header">
             <h3>📷 Escanear Código de Barras</h3>
             <button class="scanner-close-btn" onclick="cerrarEscanerCodigoBarras()" title="Cerrar">✕</button>
         </div>
-        <div class="scanner-video-wrapper">
+
+        <div class="scanner-video-wrapper" id="scannerVideoWrapper">
             <video id="scannerVideo" autoplay playsinline muted></video>
+            <canvas id="scannerSnapshot"></canvas>
             <div class="scanner-overlay-guide">
                 <div class="scanner-guide-box">
                     <div class="scanner-laser-line"></div>
                 </div>
             </div>
+            <div class="scanner-flash" id="scannerFlash"></div>
         </div>
+
         <div class="scanner-info">
-            <p>Coloca el código de barras dentro del recuadro azul</p>
+            <p class="scanner-hint" id="scannerHint">Apunta al código de barras y pulsa <b>Capturar</b></p>
+
             <div class="scanner-status" id="scannerStatus">
                 <span>⏳ Iniciando cámara...</span>
             </div>
+
+            <div class="scanner-actions">
+                <button class="btn btn-capture" id="btnCapturar" onclick="capturarYLeerCodigo()" disabled>
+                    📸 Capturar
+                </button>
+                <button class="btn btn-retry" id="btnReintentar" onclick="reiniciarCamara()" style="display:none;">
+                    🔄 Reintentar
+                </button>
+                <button class="btn btn-flash" id="btnLinterna" onclick="toggleLinterna()" title="Linterna" style="display:none;">
+                    🔦
+                </button>
+            </div>
+
             <div class="scanner-manual-input">
                 <input type="text" id="scannerManualInput" placeholder="O ingresa el código manualmente..." onkeypress="if(event.key === 'Enter') usarCodigoManual()">
                 <button class="btn btn-blue" onclick="usarCodigoManual()" style="min-height:42px;">Usar</button>
@@ -2013,28 +2132,45 @@ function debounce(key, fn, wait = 250) {
 }
 
 /* =========================================================
-   ESCÁNER DE CÓDIGO DE BARRAS (NUEVO)
+   ESCÁNER DE CÓDIGO DE BARRAS v2 — Captura manual con botón
 ========================================================= */
 async function abrirEscanerCodigoBarras() {
     if (typeof ZXing === "undefined" || window.__ZXING_FAILED__) {
         mostrarToast("Librería de escaneo no disponible. Recarga la página o ingresa el código manualmente.", "error", 6000);
         return;
     }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        mostrarToast("Tu navegador no soporta acceso a la cámara. Usa la entrada manual.", "error", 6000);
+        return;
+    }
 
     const modal = document.getElementById("scannerModal");
     const video = document.getElementById("scannerVideo");
     const statusEl = document.getElementById("scannerStatus");
-    
+    const btnCapturar = document.getElementById("btnCapturar");
+    const btnReintentar = document.getElementById("btnReintentar");
+    const btnLinterna = document.getElementById("btnLinterna");
+    const videoWrapper = document.getElementById("scannerVideoWrapper");
+    const snapshot = document.getElementById("scannerSnapshot");
+    const hint = document.getElementById("scannerHint");
+
     if (!modal || !video) return;
 
+    // Reset visual
     modal.style.display = "flex";
-    scannerActivo = true;
-
+    videoWrapper.classList.remove("snapshot-mode");
+    snapshot.style.display = "none";
+    btnCapturar.style.display = "inline-flex";
+    btnCapturar.disabled = true;
+    btnReintentar.style.display = "none";
+    btnLinterna.style.display = "none";
+    hint.innerHTML = 'Apunta al código de barras y pulsa <b>Capturar</b>';
     statusEl.className = "scanner-status scanning";
     statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Iniciando cámara...';
 
+    scannerActivo = true;
+
     try {
-        // Solicitar cámara trasera en móviles
         const constraints = {
             video: {
                 facingMode: { ideal: "environment" },
@@ -2048,49 +2184,18 @@ async function abrirEscanerCodigoBarras() {
         video.srcObject = scannerStream;
         await video.play();
 
-        statusEl.className = "scanner-status scanning";
-        statusEl.innerHTML = '📷 Apunta al código de barras...';
+        // Verificar si hay linterna disponible
+        try {
+            const track = scannerStream.getVideoTracks()[0];
+            const caps = track.getCapabilities ? track.getCapabilities() : {};
+            if (caps.torch) {
+                btnLinterna.style.display = "inline-flex";
+            }
+        } catch (e) {}
 
-        // Inicializar ZXing
-        scannerCodeReader = new ZXing.BrowserMultiFormatReader();
-        
-        // Escanear continuamente usando requestAnimationFrame
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        
-        const escanearFrame = async () => {
-            if (!scannerActivo) return;
-            
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                try {
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-                    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-                    
-                    try {
-                        const result = scannerCodeReader.decode(binaryBitmap);
-                        if (result && result.getText()) {
-                            procesarCodigoEscaneado(result.getText());
-                            return;
-                        }
-                    } catch (e) {
-                        // No se encontró código en este frame, continuar
-                    }
-                } catch (e) {
-                    // Error al procesar frame, continuar
-                }
-            }
-            
-            if (scannerActivo) {
-                scannerAnimFrame = requestAnimationFrame(escanearFrame);
-            }
-        };
-        
-        scannerAnimFrame = requestAnimationFrame(escanearFrame);
+        statusEl.className = "scanner-status scanning";
+        statusEl.innerHTML = '📷 Cámara lista. Encuadra el código y pulsa <b>Capturar</b>';
+        btnCapturar.disabled = false;
 
     } catch (err) {
         console.error("[scanner]", err);
@@ -2102,40 +2207,157 @@ async function abrirEscanerCodigoBarras() {
         } else if (err.name === "NotReadableError") {
             mensaje = "La cámara está siendo usada por otra aplicación.";
         }
-        
         statusEl.className = "scanner-status error";
         statusEl.innerHTML = `❌ ${mensaje}`;
+        btnCapturar.disabled = true;
         mostrarToast(mensaje, "error", 5000);
     }
 }
 
-function procesarCodigoEscaneado(codigo) {
-    if (!codigo) return;
-    
-    // Limpiar: quitar saltos de línea, espacios y asteriscos del Code128
-    codigo = String(codigo)
-        .replace(/[\r\n\t]/g, "")
-        .trim()
-        .replace(/^\*+|\*+$/g, "");  // quitar asteriscos al inicio/fin
-    
-    if (!codigo) return;
-    
+// Captura el frame actual y lee el código de barras
+async function capturarYLeerCodigo() {
+    const video = document.getElementById("scannerVideo");
+    const snapshot = document.getElementById("scannerSnapshot");
+    const videoWrapper = document.getElementById("scannerVideoWrapper");
+    const flash = document.getElementById("scannerFlash");
     const statusEl = document.getElementById("scannerStatus");
-    if (statusEl) {
-        statusEl.className = "scanner-status success";
-        statusEl.innerHTML = `✅ Código detectado: <b>${escapeHtml(codigo)}</b>`;
+    const btnCapturar = document.getElementById("btnCapturar");
+    const btnReintentar = document.getElementById("btnReintentar");
+    const hint = document.getElementById("scannerHint");
+
+    if (!video || !snapshot) return;
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        mostrarToast("La cámara aún no está lista. Espera un momento.", "warning");
+        return;
     }
 
-    mostrarToast(`Código escaneado: ${codigo}`, "success", 2000);
+    btnCapturar.disabled = true;
 
-    setTimeout(() => {
-        cerrarEscanerCodigoBarras();
-        
-        const inputCod = document.getElementById("inCod");
-        if (inputCod) inputCod.value = codigo;
-        
-        buscarPorCodigo();
-    }, 800);
+    // Efecto flash
+    flash.classList.add("flash-active");
+    setTimeout(() => flash.classList.remove("flash-active"), 150);
+
+    // Capturar frame
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) {
+        mostrarToast("No se pudo capturar la imagen. Intenta de nuevo.", "error");
+        btnCapturar.disabled = false;
+        return;
+    }
+
+    snapshot.width = w;
+    snapshot.height = h;
+    const ctx = snapshot.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0, w, h);
+
+    // Mostrar snapshot congelado
+    videoWrapper.classList.add("snapshot-mode");
+    hint.innerHTML = '🔍 Procesando imagen...';
+
+    statusEl.className = "scanner-status scanning";
+    statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Leyendo código...';
+
+    // Esperar un frame para que se renderice el snapshot
+    await new Promise(r => setTimeout(r, 100));
+
+    // Intentar decodificar
+    let codigoDetectado = null;
+    let intentos = 0;
+    const maxIntentos = 3;
+
+    while (!codigoDetectado && intentos < maxIntentos) {
+        intentos++;
+        try {
+            const reader = new ZXing.BrowserMultiFormatReader();
+            const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(snapshot);
+            const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+
+            try {
+                const result = reader.decode(binaryBitmap);
+                if (result && result.getText()) {
+                    codigoDetectado = result.getText();
+                }
+            } catch (decodeErr) {
+                // No detectado en este intento
+            }
+        } catch (e) {
+            console.warn("[scanner decode intento " + intentos + "]", e);
+        }
+
+        if (!codigoDetectado && intentos < maxIntentos) {
+            await new Promise(r => setTimeout(r, 200));
+            // Reintentar con la misma imagen (a veces ZXing falla el primer intento)
+        }
+    }
+
+    if (codigoDetectado) {
+        // ¡Éxito!
+        codigoDetectado = String(codigoDetectado).replace(/[\r\n\t]/g, "").trim().replace(/^\*+|\*+$/g, "");
+
+        statusEl.className = "scanner-status success";
+        statusEl.innerHTML = `✅ Código detectado: <b>${escapeHtml(codigoDetectado)}</b>`;
+        hint.innerHTML = '✅ ¡Código leído! Buscando equipo...';
+
+        mostrarToast(`Código escaneado: ${codigoDetectado}`, "success", 2500);
+
+        setTimeout(() => {
+            cerrarEscanerCodigoBarras();
+            const inputCod = document.getElementById("inCod");
+            if (inputCod) inputCod.value = codigoDetectado;
+            buscarPorCodigo();
+        }, 800);
+    } else {
+        // Falló la lectura
+        statusEl.className = "scanner-status error";
+        statusEl.innerHTML = '❌ No se pudo leer el código. Intenta de nuevo.';
+        hint.innerHTML = 'Ajusta la distancia, el enfoque o la iluminación y pulsa <b>Reintentar</b>.';
+
+        btnCapturar.style.display = "none";
+        btnReintentar.style.display = "inline-flex";
+    }
+}
+
+// Vuelve al modo cámara en vivo (para reintentar)
+async function reiniciarCamara() {
+    const videoWrapper = document.getElementById("scannerVideoWrapper");
+    const snapshot = document.getElementById("scannerSnapshot");
+    const statusEl = document.getElementById("scannerStatus");
+    const btnCapturar = document.getElementById("btnCapturar");
+    const btnReintentar = document.getElementById("btnReintentar");
+    const hint = document.getElementById("scannerHint");
+
+    videoWrapper.classList.remove("snapshot-mode");
+    snapshot.style.display = "none";
+
+    btnReintentar.style.display = "none";
+    btnCapturar.style.display = "inline-flex";
+    btnCapturar.disabled = false;
+
+    hint.innerHTML = 'Apunta al código de barras y pulsa <b>Capturar</b>';
+    statusEl.className = "scanner-status scanning";
+    statusEl.innerHTML = '📷 Cámara lista. Encuadra el código y pulsa <b>Capturar</b>';
+}
+
+// Linterna (solo móviles compatibles)
+async function toggleLinterna() {
+    const btnLinterna = document.getElementById("btnLinterna");
+    if (!scannerStream) return;
+
+    try {
+        const track = scannerStream.getVideoTracks()[0];
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (!caps.torch) {
+            mostrarToast("Este dispositivo no soporta linterna.", "warning");
+            return;
+        }
+        const actual = track.getSettings ? (track.getSettings().torch || false) : false;
+        await track.applyConstraints({ advanced: [{ torch: !actual }] });
+        btnLinterna.classList.toggle("flash-on", !actual);
+    } catch (e) {
+        console.warn("[linterna]", e);
+        mostrarToast("No se pudo activar la linterna.", "warning");
+    }
 }
 
 function usarCodigoManual() {
@@ -2145,41 +2367,60 @@ function usarCodigoManual() {
         mostrarToast("Ingresa un código válido.", "warning");
         return;
     }
-    procesarCodigoEscaneado(codigo);
+    cerrarEscanerCodigoBarras();
+    const inputCod = document.getElementById("inCod");
+    if (inputCod) inputCod.value = codigo;
+    buscarPorCodigo();
 }
 
 function cerrarEscanerCodigoBarras() {
     const modal = document.getElementById("scannerModal");
     if (modal) modal.style.display = "none";
-    
+
     scannerActivo = false;
-    
-    if (scannerAnimFrame) {
-        cancelAnimationFrame(scannerAnimFrame);
-        scannerAnimFrame = null;
-    }
-    
+
     if (scannerStream) {
         scannerStream.getTracks().forEach(track => track.stop());
         scannerStream = null;
     }
-    
+
     const video = document.getElementById("scannerVideo");
-    if (video) {
-        video.srcObject = null;
+    if (video) video.srcObject = null;
+
+    const videoWrapper = document.getElementById("scannerVideoWrapper");
+    if (videoWrapper) videoWrapper.classList.remove("snapshot-mode");
+
+    const snapshot = document.getElementById("scannerSnapshot");
+    if (snapshot) {
+        const ctx = snapshot.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, snapshot.width, snapshot.height);
+        snapshot.style.display = "none";
     }
-    
+
     const statusEl = document.getElementById("scannerStatus");
     if (statusEl) {
         statusEl.className = "scanner-status";
         statusEl.innerHTML = '<span>⏳ Iniciando cámara...</span>';
     }
-    
+
     const manualInput = document.getElementById("scannerManualInput");
     if (manualInput) manualInput.value = "";
+
+    const btnCapturar = document.getElementById("btnCapturar");
+    if (btnCapturar) {
+        btnCapturar.style.display = "inline-flex";
+        btnCapturar.disabled = true;
+    }
+    const btnReintentar = document.getElementById("btnReintentar");
+    if (btnReintentar) btnReintentar.style.display = "none";
+    const btnLinterna = document.getElementById("btnLinterna");
+    if (btnLinterna) {
+        btnLinterna.style.display = "none";
+        btnLinterna.classList.remove("flash-on");
+    }
 }
 
-// Cerrar el escáner con ESC
+// Cerrar con ESC
 document.addEventListener("keydown", function(e) {
     if (e.key === "Escape") {
         const modal = document.getElementById("scannerModal");
@@ -2996,67 +3237,94 @@ function buscarPorPersona() {
 function buscarPorCodigo() {
     const cod = limpiarStr(document.getElementById("inCod").value);
     if (!cod) { mostrarToast("Ingresa un código.", "warning"); return; }
-    
-    // Normalizar: quitar asteriscos (delimitadores Code128/Code39), espacios, guiones
+
+    // Normalizar: quitar asteriscos, espacios, guiones
     const limpiarCodigo = (v) => String(v || "")
         .trim()
-        .replace(/^\*+|\*+$/g, "")   // quitar asteriscos al inicio/fin
-        .replace(/[\s\-_]/g, "")      // quitar espacios, guiones, underscores
+        .replace(/^\*+|\*+$/g, "")
+        .replace(/[\s\-_]/g, "")
         .toUpperCase();
-    
+
     const codNorm = limpiarCodigo(cod);
-    
-    // Función auxiliar: obtiene el código de barras limpio del bien
+    const codSinCeros = codNorm.replace(/^0+/, "");
+
+    // ══════ OBTENER BARRAS (puede venir como texto o estar vacío por fórmula IMAGE) ══════
     const extraerBarras = (r) => {
-        return limpiarStr(campo(r, 
-            "BARRAS", "Barras", "barras", 
-            "CODIGO_BARRAS", "CODIGO_DE_BARRAS", 
+        let b = limpiarStr(campo(r,
+            "BARRAS", "Barras", "barras",
+            "CODIGO_BARRAS", "CODIGO_DE_BARRAS",
             "CODIGO DE BARRAS", "CÓDIGO DE BARRAS",
-            "EAN", "UPC"
+            "EAN", "UPC", "CODIGO_BARRA"
         ));
+        // Si el valor es una URL de imagen o empieza con "=IMAGE", descartarlo
+        if (b.includes("IMAGE(") || b.includes("http://") || b.includes("https://")) {
+            b = "";
+        }
+        return b;
     };
-    
-    // ══════════ BÚSQUEDA 1: Exacta (sin asteriscos) ══════════
-    let bien = inventario.find(r => {
-        const b = limpiarCodigo(extraerBarras(r));
-        const sbn = limpiarCodigo(limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO")));
-        const serie = limpiarCodigo(limpiarStr(campo(r, "SERIE")));
-        return b === codNorm || sbn === codNorm || serie === codNorm;
-    });
-    
-    // ══════════ BÚSQUEDA 2: Sin ceros iniciales ══════════
+
+    const extraerSBN = (r) => limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
+    const extraerSerie = (r) => limpiarStr(campo(r, "SERIE"));
+
+    // Función auxiliar: compara un candidato con el código escaneado
+    const coincide = (candidato) => {
+        const c = limpiarCodigo(candidato);
+        if (!c) return false;
+        if (c === codNorm) return true;
+        if (c.replace(/^0+/, "") === codSinCeros && codSinCeros.length > 0) return true;
+        return false;
+    };
+
+    // ══════ BÚSQUEDA 1: BARRAS exacto ══════
+    let bien = inventario.find(r => coincide(extraerBarras(r)));
+
+    // ══════ BÚSQUEDA 2: SBN exacto (porque tu fórmula usa L28 = SBN) ══════
     if (!bien) {
-        const codSinCeros = codNorm.replace(/^0+/, "");
-        bien = inventario.find(r => {
-            const b = limpiarCodigo(extraerBarras(r)).replace(/^0+/, "");
-            const sbn = limpiarCodigo(limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"))).replace(/^0+/, "");
-            const serie = limpiarCodigo(limpiarStr(campo(r, "SERIE"))).replace(/^0+/, "");
-            return (b && b === codSinCeros) || (sbn && sbn === codSinCeros) || (serie && serie === codSinCeros);
-        });
+        bien = inventario.find(r => coincide(extraerSBN(r)));
     }
-    
-    // ══════════ BÚSQUEDA 3: Parcial (contiene) ══════════
+
+    // ══════ BÚSQUEDA 3: SERIE exacto ══════
+    if (!bien) {
+        bien = inventario.find(r => coincide(extraerSerie(r)));
+    }
+
+    // ══════ BÚSQUEDA 4: Parcial en BARRAS ══════
     if (!bien) {
         bien = inventario.find(r => {
             const b = limpiarCodigo(extraerBarras(r));
-            const sbn = limpiarCodigo(limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO")));
-            const serie = limpiarCodigo(limpiarStr(campo(r, "SERIE")));
-            return (b && b.includes(codNorm)) || (sbn && sbn.includes(codNorm)) || (serie && serie.includes(codNorm));
+            return b && b.length >= 4 && b.includes(codNorm);
         });
     }
-    
+
+    // ══════ BÚSQUEDA 5: Parcial en SBN ══════
+    if (!bien) {
+        bien = inventario.find(r => {
+            const s = limpiarCodigo(extraerSBN(r));
+            return s && s.length >= 4 && s.includes(codNorm);
+        });
+    }
+
+    // ══════ BÚSQUEDA 6: Parcial en SERIE ══════
+    if (!bien) {
+        bien = inventario.find(r => {
+            const s = limpiarCodigo(extraerSerie(r));
+            return s && s.length >= 4 && s.includes(codNorm);
+        });
+    }
+
     if (!bien) {
         mostrarAlertaModal(
-            "Código no encontrado", 
-            `No se encontró ningún bien con el código:<br><br>
+            "Código no encontrado",
+            `No se encontró ningún bien con:<br><br>
              <code style="background:#f1f5f9; padding:6px 12px; border-radius:6px; font-family:monospace; font-size:14px;">${escapeHtml(cod)}</code><br><br>
-             <small>⚠️ Recuerda: solo la hoja <b>"CPU Y LAPTOS"</b> tiene columna BARRAS. Si escaneaste un monitor o teclado, no se encontrará por este método (usa la búsqueda por SBN o Serie).</small>`, 
+             <small>Se buscó en las columnas <b>BARRAS</b>, <b>SBN_CONCILIADO</b> y <b>SERIE</b>.<br>
+             Si la columna BARRAS tiene una fórmula <code>=IMAGE(...)</code>, el backend NO puede leer el código real. Debes poner el texto plano en BARRAS.</small>`,
             "error"
         );
         return;
     }
-    
-    // ══════════ MOSTRAR FICHA (igual que antes) ══════════
+
+    // ══════ MOSTRAR FICHA ══════
     const dni = normalizarDni(campo(bien, "DNI"));
     const nom = (campo(bien, "USUARIO RESPONSABLE", "USUARIO") || "").trim();
     equiposDelServidor = inventario.filter(r => {
@@ -3065,13 +3333,13 @@ function buscarPorCodigo() {
     });
     if (!equiposDelServidor.length) equiposDelServidor = [bien];
     servidorActualSeleccionado = bien;
-    
+
     if (equiposDelServidor.length > 1) {
         document.getElementById("boxStatsColores").style.display = "grid";
     } else {
         document.getElementById("boxStatsColores").style.display = "none";
     }
-    
+
     mostrarFichaServidor(bien, equiposDelServidor, bien);
 }
 
