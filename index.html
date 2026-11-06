@@ -2112,6 +2112,14 @@ async function abrirEscanerCodigoBarras() {
 function procesarCodigoEscaneado(codigo) {
     if (!codigo) return;
     
+    // Limpiar: quitar saltos de línea, espacios y asteriscos del Code128
+    codigo = String(codigo)
+        .replace(/[\r\n\t]/g, "")
+        .trim()
+        .replace(/^\*+|\*+$/g, "");  // quitar asteriscos al inicio/fin
+    
+    if (!codigo) return;
+    
     const statusEl = document.getElementById("scannerStatus");
     if (statusEl) {
         statusEl.className = "scanner-status success";
@@ -2120,15 +2128,12 @@ function procesarCodigoEscaneado(codigo) {
 
     mostrarToast(`Código escaneado: ${codigo}`, "success", 2000);
 
-    // Buscar el bien en el inventario
     setTimeout(() => {
         cerrarEscanerCodigoBarras();
         
-        // Poner el código en el input de búsqueda
         const inputCod = document.getElementById("inCod");
         if (inputCod) inputCod.value = codigo;
         
-        // Ejecutar búsqueda automáticamente
         buscarPorCodigo();
     }, 800);
 }
@@ -2992,29 +2997,66 @@ function buscarPorCodigo() {
     const cod = limpiarStr(document.getElementById("inCod").value);
     if (!cod) { mostrarToast("Ingresa un código.", "warning"); return; }
     
-    // Búsqueda mejorada: SBN, Serie, Código Patrimonial y BARRAS
+    // Normalizar: quitar asteriscos (delimitadores Code128/Code39), espacios, guiones
+    const limpiarCodigo = (v) => String(v || "")
+        .trim()
+        .replace(/^\*+|\*+$/g, "")   // quitar asteriscos al inicio/fin
+        .replace(/[\s\-_]/g, "")      // quitar espacios, guiones, underscores
+        .toUpperCase();
+    
+    const codNorm = limpiarCodigo(cod);
+    
+    // Función auxiliar: obtiene el código de barras limpio del bien
+    const extraerBarras = (r) => {
+        return limpiarStr(campo(r, 
+            "BARRAS", "Barras", "barras", 
+            "CODIGO_BARRAS", "CODIGO_DE_BARRAS", 
+            "CODIGO DE BARRAS", "CÓDIGO DE BARRAS",
+            "EAN", "UPC"
+        ));
+    };
+    
+    // ══════════ BÚSQUEDA 1: Exacta (sin asteriscos) ══════════
     let bien = inventario.find(r => {
-        const sbn = limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
-        const serie = limpiarStr(campo(r, "SERIE"));
-        const barras = limpiarStr(campo(r, "BARRAS", "CODIGO_BARRAS", "CODIGO_DE_BARRAS"));
-        return sbn === cod || serie === cod || barras === cod;
+        const b = limpiarCodigo(extraerBarras(r));
+        const sbn = limpiarCodigo(limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO")));
+        const serie = limpiarCodigo(limpiarStr(campo(r, "SERIE")));
+        return b === codNorm || sbn === codNorm || serie === codNorm;
     });
     
-    // Búsqueda parcial si no hay coincidencia exacta
+    // ══════════ BÚSQUEDA 2: Sin ceros iniciales ══════════
+    if (!bien) {
+        const codSinCeros = codNorm.replace(/^0+/, "");
+        bien = inventario.find(r => {
+            const b = limpiarCodigo(extraerBarras(r)).replace(/^0+/, "");
+            const sbn = limpiarCodigo(limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"))).replace(/^0+/, "");
+            const serie = limpiarCodigo(limpiarStr(campo(r, "SERIE"))).replace(/^0+/, "");
+            return (b && b === codSinCeros) || (sbn && sbn === codSinCeros) || (serie && serie === codSinCeros);
+        });
+    }
+    
+    // ══════════ BÚSQUEDA 3: Parcial (contiene) ══════════
     if (!bien) {
         bien = inventario.find(r => {
-            const sbn = limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"));
-            const serie = limpiarStr(campo(r, "SERIE"));
-            const barras = limpiarStr(campo(r, "BARRAS", "CODIGO_BARRAS", "CODIGO_DE_BARRAS"));
-            return sbn.includes(cod) || serie.includes(cod) || barras.includes(cod);
+            const b = limpiarCodigo(extraerBarras(r));
+            const sbn = limpiarCodigo(limpiarStr(campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO")));
+            const serie = limpiarCodigo(limpiarStr(campo(r, "SERIE")));
+            return (b && b.includes(codNorm)) || (sbn && sbn.includes(codNorm)) || (serie && serie.includes(codNorm));
         });
     }
     
     if (!bien) {
-        mostrarAlertaModal("Código no encontrado", `No se encontró ningún bien con el código, serie o código de barras: <b>${escapeHtml(cod)}</b>`, "error");
+        mostrarAlertaModal(
+            "Código no encontrado", 
+            `No se encontró ningún bien con el código:<br><br>
+             <code style="background:#f1f5f9; padding:6px 12px; border-radius:6px; font-family:monospace; font-size:14px;">${escapeHtml(cod)}</code><br><br>
+             <small>⚠️ Recuerda: solo la hoja <b>"CPU Y LAPTOS"</b> tiene columna BARRAS. Si escaneaste un monitor o teclado, no se encontrará por este método (usa la búsqueda por SBN o Serie).</small>`, 
+            "error"
+        );
         return;
     }
-
+    
+    // ══════════ MOSTRAR FICHA (igual que antes) ══════════
     const dni = normalizarDni(campo(bien, "DNI"));
     const nom = (campo(bien, "USUARIO RESPONSABLE", "USUARIO") || "").trim();
     equiposDelServidor = inventario.filter(r => {
@@ -3023,8 +3065,7 @@ function buscarPorCodigo() {
     });
     if (!equiposDelServidor.length) equiposDelServidor = [bien];
     servidorActualSeleccionado = bien;
-
-    // Mostrar stats solo si el usuario tiene múltiples equipos
+    
     if (equiposDelServidor.length > 1) {
         document.getElementById("boxStatsColores").style.display = "grid";
     } else {
