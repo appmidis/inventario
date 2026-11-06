@@ -2132,11 +2132,13 @@ function debounce(key, fn, wait = 250) {
 }
 
 /* =========================================================
-   ESCÁNER DE CÓDIGO DE BARRAS v2 — Captura manual con botón
+   ESCÁNER DE CÓDIGO DE BARRAS v3 — Compatible con ZXing 0.20
 ========================================================= */
+let scannerReaderZXing = null;
+
 async function abrirEscanerCodigoBarras() {
     if (typeof ZXing === "undefined" || window.__ZXING_FAILED__) {
-        mostrarToast("Librería de escaneo no disponible. Recarga la página o ingresa el código manualmente.", "error", 6000);
+        mostrarToast("Librería de escaneo no disponible. Recarga la página.", "error", 6000);
         return;
     }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -2214,7 +2216,7 @@ async function abrirEscanerCodigoBarras() {
     }
 }
 
-// Captura el frame actual y lee el código de barras
+// Captura el frame actual y lee el código de barras (VERSIÓN QUE SÍ FUNCIONA)
 async function capturarYLeerCodigo() {
     const video = document.getElementById("scannerVideo");
     const snapshot = document.getElementById("scannerSnapshot");
@@ -2258,37 +2260,68 @@ async function capturarYLeerCodigo() {
     statusEl.className = "scanner-status scanning";
     statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Leyendo código...';
 
-    // Esperar un frame para que se renderice el snapshot
-    await new Promise(r => setTimeout(r, 100));
+    // Esperar un frame para que se renderice
+    await new Promise(r => setTimeout(r, 150));
 
-    // Intentar decodificar
+    // ══════ MÉTODO CORRECTO PARA ZXING 0.20 ══════
+    // Usar decodeFromImageElement() con una imagen temporal generada desde el canvas.
+    // Este método SÍ funciona en la versión 0.20 del bundle UMD.
     let codigoDetectado = null;
-    let intentos = 0;
-    const maxIntentos = 3;
 
-    while (!codigoDetectado && intentos < maxIntentos) {
-        intentos++;
+    try {
+        const imageDataURL = snapshot.toDataURL("image/png");
+
+        // Crear un <img> temporal con la captura
+        const tempImg = new Image();
+        tempImg.src = imageDataURL;
+
+        // Esperar a que cargue
+        await new Promise((resolve, reject) => {
+            tempImg.onload = resolve;
+            tempImg.onerror = reject;
+            if (tempImg.complete) resolve();
+        });
+
+        // Crear el reader de ZXing
+        if (!scannerReaderZXing) {
+            scannerReaderZXing = new ZXing.BrowserMultiFormatReader();
+        }
+
+        // decodeFromImageElement es asíncrono y devuelve un Result o lanza excepción
         try {
-            const reader = new ZXing.BrowserMultiFormatReader();
-            const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(snapshot);
-            const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-
-            try {
-                const result = reader.decode(binaryBitmap);
-                if (result && result.getText()) {
-                    codigoDetectado = result.getText();
-                }
-            } catch (decodeErr) {
-                // No detectado en este intento
+            const result = await scannerReaderZXing.decodeFromImageElement(tempImg);
+            if (result && result.getText && result.getText()) {
+                codigoDetectado = result.getText();
             }
-        } catch (e) {
-            console.warn("[scanner decode intento " + intentos + "]", e);
+        } catch (decodeErr) {
+            // Intento alternativo: algunos códigos requieren pasar hints
+            try {
+                const hints = new Map();
+                hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+                hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+                    ZXing.BarcodeFormat.CODE_128,
+                    ZXing.BarcodeFormat.CODE_39,
+                    ZXing.BarcodeFormat.CODE_93,
+                    ZXing.BarcodeFormat.EAN_13,
+                    ZXing.BarcodeFormat.EAN_8,
+                    ZXing.BarcodeFormat.UPC_A,
+                    ZXing.BarcodeFormat.UPC_E,
+                    ZXing.BarcodeFormat.QR_CODE,
+                    ZXing.BarcodeFormat.DATA_MATRIX,
+                    ZXing.BarcodeFormat.ITF,
+                    ZXing.BarcodeFormat.CODABAR
+                ]);
+                scannerReaderZXing = new ZXing.BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
+                const result2 = await scannerReaderZXing.decodeFromImageElement(tempImg);
+                if (result2 && result2.getText && result2.getText()) {
+                    codigoDetectado = result2.getText();
+                }
+            } catch (decodeErr2) {
+                // Falló también el segundo intento
+            }
         }
-
-        if (!codigoDetectado && intentos < maxIntentos) {
-            await new Promise(r => setTimeout(r, 200));
-            // Reintentar con la misma imagen (a veces ZXing falla el primer intento)
-        }
+    } catch (e) {
+        console.error("[capturarYLeerCodigo]", e);
     }
 
     if (codigoDetectado) {
