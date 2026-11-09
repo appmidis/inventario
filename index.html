@@ -2827,20 +2827,31 @@ async function procesarArchivoImagen(file) {
     const statusEl = document.getElementById("scannerStatus");
     if (statusEl) {
         statusEl.className = "scanner-status scanning";
-        statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Procesando imagen...';
+        statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Analizando imagen...';
     }
 
-    const reader = obtenerReaderZXing();
-    if (!reader) {
-        if (statusEl) {
-            statusEl.className = "scanner-status error";
-            statusEl.innerHTML = "❌ Lector no disponible.";
-        }
+    // ⚠️ IMPORTANTE: Usamos BrowserMultiFormatReader con hints específicos para imágenes
+    if (typeof ZXing === "undefined" || window.__ZXING_FAILED__) {
+        mostrarToast("Librería de escaneo no disponible.", "error");
         return;
     }
 
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true); // Fuerza a ZXing a esforzarse más
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.CODE_128,
+        ZXing.BarcodeFormat.CODE_39,
+        ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.EAN_13,
+        ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.QR_CODE
+    ]);
+    
+    // Creamos un lector exclusivo para imágenes
+    const reader = new ZXing.BrowserMultiFormatReader(hints, 500);
+
     try {
-        // Leer archivo como dataURL
+        // 1. Leer archivo como dataURL
         const dataURL = await new Promise((resolve, reject) => {
             const fr = new FileReader();
             fr.onload = () => resolve(fr.result);
@@ -2848,7 +2859,7 @@ async function procesarArchivoImagen(file) {
             fr.readAsDataURL(file);
         });
 
-        // Cargar imagen
+        // 2. Cargar imagen
         const img = await new Promise((resolve, reject) => {
             const i = new Image();
             i.onload = () => resolve(i);
@@ -2856,7 +2867,7 @@ async function procesarArchivoImagen(file) {
             i.src = dataURL;
         });
 
-        // Mostrar preview en canvas
+        // 3. Mostrar preview
         const previewCanvas = document.getElementById("scannerFilePreviewCanvas");
         const previewWrapper = document.getElementById("scannerFilePreviewWrapper");
         if (previewCanvas && previewWrapper) {
@@ -2869,33 +2880,43 @@ async function procesarArchivoImagen(file) {
             previewWrapper.style.display = "block";
         }
 
-        // Decodificar con ZXing (decodeFromImageElement sí existe en 0.20)
-        let codigo = null;
-        try {
-            const result = reader.decodeFromImageElement(img);
-            if (result && result.getText && result.getText()) codigo = result.getText();
-        } catch (e1) {
-            // Intento 2: usar decodeFromCanvas con la imagen dibujada
-            try {
-                const c = document.createElement("canvas");
-                c.width = img.width;
-                c.height = img.height;
-                c.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
-                const result2 = reader.decodeFromCanvas(c);
-                if (result2 && result2.getText && result2.getText()) codigo = result2.getText();
-            } catch (e2) {
-                // Intento 3: escalar imagen 2x (útil para códigos pequeños)
-                try {
-                    const c2 = document.createElement("canvas");
-                    c2.width = img.width * 2;
-                    c2.height = img.height * 2;
-                    const ctx2 = c2.getContext("2d", { willReadFrequently: true });
-                    ctx2.imageSmoothingEnabled = false;
-                    ctx2.drawImage(img, 0, 0, c2.width, c2.height);
-                    const result3 = reader.decodeFromCanvas(c2);
-                    if (result3 && result3.getText && result3.getText()) codigo = result3.getText();
-                } catch (e3) {}
+        // 4. Preparar lienzo para procesamiento
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+        // INTENTO 1: Lectura directa de la imagen original
+        ctx.drawImage(img, 0, 0);
+        let codigo = await intentarDecodificar(reader, canvas);
+
+        // INTENTO 2: Si falla, aplicar filtro de escala de grises y alto contraste
+        if (!codigo) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            // Filtro: Blanco y negro puro para resaltar las barras
+            for (let i = 0; i < data.length; i += 4) {
+                const gris = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+                const valor = gris < 128 ? 0 : 255; // Contraste extremo
+                data[i] = valor;
+                data[i+1] = valor;
+                data[i+2] = valor;
             }
+            ctx.putImageData(imageData, 0, 0);
+            codigo = await intentarDecodificar(reader, canvas);
+        }
+
+        // INTENTO 3: Si aún falla, escalar la imagen al triple (3x) para agrandar el código
+        if (!codigo) {
+            const canvasZoom = document.createElement("canvas");
+            // Escalar 3 veces el tamaño, con un máximo de 3000px para no colapsar
+            const escala = Math.min(3, 3000 / Math.max(img.width, img.height));
+            canvasZoom.width = img.width * escala;
+            canvasZoom.height = img.height * escala;
+            const ctxZoom = canvasZoom.getContext("2d", { willReadFrequently: true });
+            ctxZoom.imageSmoothingEnabled = false; // No suavizar, para mantener las barras nítidas
+            ctxZoom.drawImage(img, 0, 0, canvasZoom.width, canvasZoom.height);
+            codigo = await intentarDecodificar(reader, canvasZoom);
         }
 
         if (codigo) {
@@ -2903,9 +2924,9 @@ async function procesarArchivoImagen(file) {
         } else {
             if (statusEl) {
                 statusEl.className = "scanner-status error";
-                statusEl.innerHTML = "❌ No se detectó código en la imagen. Prueba con otra más nítida o con mejor contraste.";
+                statusEl.innerHTML = "❌ No se detectó código. La imagen debe ser nítida y tener buen contraste.";
             }
-            mostrarToast("No se detectó ningún código en la imagen.", "warning", 5000);
+            mostrarToast("No se detectó ningún código. Intenta con una imagen de mayor calidad.", "warning", 5000);
         }
     } catch (err) {
         console.error("[procesarArchivoImagen]", err);
@@ -2913,7 +2934,22 @@ async function procesarArchivoImagen(file) {
             statusEl.className = "scanner-status error";
             statusEl.innerHTML = "❌ Error al procesar la imagen.";
         }
+    } finally {
+        if (reader) {
+            reader.reset();
+        }
     }
+}
+
+// Función auxiliar para intentar decodificar un canvas
+function intentarDecodificar(reader, canvas) {
+    try {
+        const result = reader.decodeFromCanvas(canvas);
+        if (result && result.getText) return result.getText();
+    } catch (e) {
+        return null; // Es normal que falle en el primer intento
+    }
+    return null;
 }
 
 async function reiniciarCamara() {
