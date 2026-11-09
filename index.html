@@ -3724,8 +3724,55 @@ function buscarPorPersona() {
     mostrarFichaServidor(servidorActualSeleccionado, equiposDelServidor);
 }
 
-function buscarPorCodigo() {
-    const cod = limpiarStr(document.getElementById("inCod").value);
+async function buscarPorCodigo() {
+    const input = document.getElementById("inCod");
+    const cod = limpiarStr(input ? input.value : "");
+    if (!cod) { mostrarToast("Ingresa un código.", "warning"); return; }
+
+    // 1) Consultar primero Sheets para obtener el dato más reciente.
+    // 2) Si el servidor no responde/no encuentra, usar el inventario local.
+    if (sessionToken) {
+        try {
+            const res = await fetchConTimeout(CONFIG.urlScript, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ accion: "buscarBienPorCodigo", token: sessionToken, codigo: cod }),
+                redirect: "follow"
+            });
+            const respuesta = await res.json();
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (respuesta && respuesta.success && respuesta.found && respuesta.data) {
+                const bienServidor = normalizarClaves(respuesta.data);
+                const asignadosServidor = (Array.isArray(respuesta.bienesAsignados) ? respuesta.bienesAsignados : [respuesta.data]).map(normalizarClaves);
+                // Mantener inventario local actualizado con los registros devueltos por el servidor.
+                const claves = new Set(asignadosServidor.map(r => [campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"), campo(r, "SERIE")].join("|")));
+                inventario = inventario.filter(r => !claves.has([campo(r, "SBN_CONCILIADO", "CODIGO_PATRIMONIAL", "CODIGO"), campo(r, "SERIE")].join("|")));
+                inventario.push(...asignadosServidor);
+                equiposDelServidor = asignadosServidor.length ? asignadosServidor : [bienServidor];
+                servidorActualSeleccionado = bienServidor;
+                const cantidad = equiposDelServidor.length;
+                const stats = document.getElementById("boxStatsColores");
+                if (stats) stats.style.display = cantidad > 1 ? "grid" : "none";
+                mostrarFichaServidor(bienServidor, equiposDelServidor, bienServidor);
+                mostrarToast("Equipo localizado directamente en Google Sheets.", "success", 2500);
+                return;
+            }
+            if (respuesta && respuesta.success === false) {
+                console.warn("Búsqueda directa rechazada:", respuesta.error);
+                if (/sesión inválida|expirada/i.test(respuesta.error || "")) {
+                    mostrarToast("La sesión expiró. Inicia sesión nuevamente.", "warning", 4500);
+                }
+            }
+        } catch (error) {
+            console.warn("No se pudo consultar Apps Script; se usará el inventario local.", error);
+            mostrarToast("No se pudo consultar el servidor. Buscando en la copia local…", "warning", 3000);
+        }
+    }
+    buscarPorCodigoLocal(cod);
+}
+
+function buscarPorCodigoLocal(codigoIngresado = null) {
+    const cod = limpiarStr(codigoIngresado || (document.getElementById("inCod") || {}).value || "");
     if (!cod) { mostrarToast("Ingresa un código.", "warning"); return; }
 
     // Normalizar: quitar asteriscos, espacios, guiones
@@ -3808,7 +3855,7 @@ function buscarPorCodigo() {
             `No se encontró ningún bien con:<br><br>
              <code style="background:#f1f5f9; padding:6px 12px; border-radius:6px; font-family:monospace; font-size:14px;">${escapeHtml(cod)}</code><br><br>
              <small>Se buscó en las columnas <b>BARRAS</b>, <b>SBN_CONCILIADO</b> y <b>SERIE</b>.<br>
-             Si la columna BARRAS tiene una fórmula <code>=IMAGE(...)</code>, el backend NO puede leer el código real. Debes poner el texto plano en BARRAS.</small>`,
+             El valor escaneable debe estar guardado como texto o número en BARRAS (o en otra columna de código). Una fórmula <code>=IMAGE(...)</code> o una URL solo muestra la imagen y no contiene el número que se debe comparar.</small>`,
             "error"
         );
         return;
