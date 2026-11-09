@@ -3883,12 +3883,12 @@ function buscarPorCodigoLocal(codigoIngresado = null) {
         return false;
     };
 
-    // ══════ BÚSQUEDA 1: BARRAS exacto ══════
-    let bien = inventario.find(r => coincide(extraerBarras(r)));
+        // ══════ BÚSQUEDA 1: SBN exacto ══════
+    let bien = inventario.find(r => coincide(extraerSBN(r)));
 
-    // ══════ BÚSQUEDA 2: SBN exacto (porque tu fórmula usa L28 = SBN) ══════
+    // ══════ BÚSQUEDA 2: BARRAS (por si en el futuro usas texto plano) ══════
     if (!bien) {
-        bien = inventario.find(r => coincide(extraerSBN(r)));
+       bien = inventario.find(r => coincide(extraerBarras(r)));
     }
 
     // ══════ BÚSQUEDA 3: SERIE exacto ══════
