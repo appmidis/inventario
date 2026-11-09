@@ -960,7 +960,7 @@
         .historial-table { min-width: 520px; font-size: 9px; }
     }
 
-    /* ==================== RESPONSIVE MÓDULO 3 (ACTA) — MEJORADO ==================== */
+        /* ==================== RESPONSIVE MÓDULO 3 (ACTA) — MEJORADO ==================== */
     @media (max-width: 900px) {
         /* Filtros en Módulo 3 */
         #modulo-acta .filter-grid-4 {
@@ -1375,7 +1375,24 @@
 .scanner-video-wrapper.detected-flash {
     animation: successPulse 0.4s ease;
 }
-	
+	/* Acta histórica en modal — responsive */
+@media (max-width: 768px) {
+    #modalActaHistorial > div { padding: 10px !important; border-radius: 12px !important; }
+    #modalActaHistorial .acta-documento-a4 {
+        padding: 10mm 8mm 40mm 10mm !important;
+        min-height: auto !important;
+        font-size: 7.5pt !important;
+    }
+    #modalActaHistorial .acta-bloque-pie { position: static !important; margin-top: 20px !important; }
+    #modalActaHistorial .acta-signatures-box { flex-direction: column !important; gap: 24px !important; }
+    #modalActaHistorial .acta-footer-note-bottom { position: static !important; margin-top: 14px !important; }
+    #modalActaHistorial .acta-table { display: block; overflow-x: auto; white-space: nowrap; }
+    #modalActaHistorial .acta-table thead,
+    #modalActaHistorial .acta-table tbody,
+    #modalActaHistorial .acta-table tr { display: table; width: 100%; table-layout: fixed; }
+    #modalActaHistorial .acta-table th,
+    #modalActaHistorial .acta-table td { font-size: 7pt !important; padding: 3px 2px !important; white-space: normal; word-break: break-word; }
+}
     </style>
 </head>
 <body>
@@ -4397,45 +4414,90 @@ function generarReporteModulo2() {
             document.getElementById("typeTecladoCount").textContent = nTec;
             document.getElementById("m2AnalyticsWrapper").style.display = "grid";
 
-            let mapU = new Map();
-            lista.forEach(item => {
-                const dni = normalizarDni(campo(item, "DNI"));
-                const nom = (campo(item, "USUARIO RESPONSABLE", "USUARIO") || "SIN ASIGNAR").trim();
-                const key = dni ? `${dni}_${nom}` : nom;
-                if (!mapU.has(key)) mapU.set(key, { nom, dni: dni || "S/DNI", total: 0, cpus: [], mons: [], tecs: [] });
-                const u = mapU.get(key);
-                u.total++;
-                const cod = limpiarStr(campo(item, "SBN_CONCILIADO", "CODIGO")) || "S/C";
-                const mod = `${campo(item, "MARCA") || ""} ${campo(item, "MODELO") || ""}`.trim();
-                const card = `<div class="device-card-item"><b>${escapeHtml(cod)}</b><small>${escapeHtml(mod)}</small></div>`;
-                const p = detectarPestana(item);
-                if (p.includes("CPU") || p.includes("LAPTO")) u.cpus.push(card);
-                else if (p.includes("MONITOR")) u.mons.push(card);
-                else if (p.includes("TECLADO")) u.tecs.push(card);
-            });
+         let mapU = new Map();
+	lista.forEach(item => {
+    const dni = normalizarDni(campo(item, "DNI"));
+    const nom = (campo(item, "USUARIO RESPONSABLE", "USUARIO") || "SIN ASIGNAR").trim();
+    const key = dni ? `${dni}_${nom}` : nom;
+    if (!mapU.has(key)) mapU.set(key, { nom, dni: dni || "S/DNI", total: 0, cpus: [], mons: [], tecs: [], modalidades: new Set() });
+    const u = mapU.get(key);
 
-            const tbody = document.getElementById("m2TableBody");
-            tbody.innerHTML = "";
-            let c = 1;
-            const filasArr = [];
+    // Registrar modalidad del usuario
+    const modalidadUser = (campo(item, "MODALIDAD") || "").trim().toUpperCase();
+    if (modalidadUser) u.modalidades.add(modalidadUser);
 
-            const usuariosArray = Array.from(mapU.values());
-            usuariosArray.sort((a, b) => a.nom.localeCompare(b.nom));
+    u.total++;
+    const cod = limpiarStr(campo(item, "SBN_CONCILIADO", "CODIGO")) || "S/C";
+    const modTextoEquipo = `${campo(item, "MARCA") || ""} ${campo(item, "MODELO") || ""}`.trim();
+    const card = `<div class="device-card-item"><b>${escapeHtml(cod)}</b><small>${escapeHtml(modTextoEquipo)}</small></div>`;
+    const p = detectarPestana(item);
+    if (p.includes("CPU") || p.includes("LAPTO")) u.cpus.push(card);
+    else if (p.includes("MONITOR")) u.mons.push(card);
+    else if (p.includes("TECLADO")) u.tecs.push(card);
+	});
 
-            usuariosArray.forEach(u => {
-                const fila = `
-                    <tr>
-                        <td style="text-align:center;">${c++}</td>
-                        <td><b>${escapeHtml(u.nom)}</b><br><small style="color:#64748b;">DNI: ${escapeHtml(u.dni)}</small></td>
-                        <td style="text-align:center;"><span class="badge-count-total">${u.total}</span></td>
-                        <td>${u.cpus.join("") || "-"}</td>
-                        <td>${u.mons.join("") || "-"}</td>
-                        <td>${u.tecs.join("") || "-"}</td>
-                    </tr>`;
-                tbody.innerHTML += fila;
-                filasArr.push(fila);
-            });
-            document.getElementById("m2TableBodyA4").innerHTML = filasArr.join("");
+          const tbody = document.getElementById("m2TableBody");
+tbody.innerHTML = "";
+let c = 1;
+const filasArr = [];
+
+// Contadores por modalidad (para la fila de totales)
+const conteoModalidades = {};
+let totalPersonas = mapU.size;
+
+const usuariosArray = Array.from(mapU.values());
+usuariosArray.sort((a, b) => a.nom.localeCompare(b.nom));
+
+usuariosArray.forEach(u => {
+    // Texto de modalidad y conteo global
+    let modTexto = "";
+    if (u.modalidades.size > 0) {
+        const arr = Array.from(u.modalidades).sort();
+        modTexto = arr.join(" / ");
+        arr.forEach(m => {
+            if (!conteoModalidades[m]) conteoModalidades[m] = 0;
+            conteoModalidades[m]++;
+        });
+    } else {
+        modTexto = "SIN MODALIDAD";
+        if (!conteoModalidades["SIN MODALIDAD"]) conteoModalidades["SIN MODALIDAD"] = 0;
+        conteoModalidades["SIN MODALIDAD"]++;
+    }
+
+    const fila = `
+        <tr>
+            <td style="text-align:center;">${c++}</td>
+            <td>
+                <b>${escapeHtml(u.nom)}</b><br>
+                <small style="color:#64748b; display:block;">DNI: ${escapeHtml(u.dni)}</small>
+                <small style="color:var(--accent); font-weight:700; font-size:9px; background:#eff6ff; padding:1px 5px; border-radius:4px; display:inline-block; margin-top:2px;">${escapeHtml(modTexto)}</small>
+            </td>
+            <td style="text-align:center;"><span class="badge-count-total">${u.total}</span></td>
+            <td>${u.cpus.join("") || "-"}</td>
+            <td>${u.mons.join("") || "-"}</td>
+            <td>${u.tecs.join("") || "-"}</td>
+        </tr>`;
+    tbody.innerHTML += fila;
+    filasArr.push(fila);
+});
+
+// Fila de totales con conteo por modalidad
+const totalRow = `
+    <tr style="background:#f8fafc; font-weight:800; border-top:2px solid var(--primary);">
+        <td colspan="2" style="text-align:right; padding:10px 8px;">
+            TOTAL PERSONAS: <span style="font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--primary);">${totalPersonas}</span>
+        </td>
+        <td style="text-align:center; font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--primary);">${lista.length}</td>
+        <td colspan="3" style="text-align:left; padding-left:10px;">
+            ${Object.entries(conteoModalidades).sort((a,b)=>b[1]-a[1]).map(([mod, count]) => 
+                `<span style="display:inline-block; background:#e2e8f0; padding:2px 8px; border-radius:12px; margin:2px 4px 2px 0; font-size:10px; font-weight:700;">${escapeHtml(mod)}: ${count}</span>`
+            ).join("")}
+        </td>
+    </tr>`;
+tbody.innerHTML += totalRow;
+filasArr.push(totalRow);
+
+document.getElementById("m2TableBodyA4").innerHTML = filasArr.join("");
 
             const meta = `GERENCIA: ${ger} | ÁREA: ${area || "TODAS"} | SUBÁREA: ${sub || "TODAS"}`;
             document.getElementById("m2Metadatos").innerText = meta;
@@ -5067,7 +5129,7 @@ function renderizarHistorialActas() {
             : '<span class="badge-tipo-devolucion">DEVOLUCIÓN</span>';
         const badgeEquipo = `<span class="badge-equipo">${escapeHtml(r.tipoEquipo || "")}</span>`;
 
-        tr.innerHTML = `
+              tr.innerHTML = `
             <td style="font-size:10.5px; white-space:nowrap;">${escapeHtml(r.fechaTexto || (r.fecha ? new Date(r.fecha).toLocaleDateString("es-PE") : ""))}</td>
             <td>${badgeTipo}</td>
             <td style="font-size:11px;"><b>${escapeHtml(r.quienEntrega || "")}</b><br><small style="color:#64748b;">DNI: ${escapeHtml(r.quienEntregaDni || "S/DNI")}</small></td>
@@ -5079,10 +5141,229 @@ function renderizarHistorialActas() {
             <td style="font-size:10.5px; font-family:'JetBrains Mono',monospace;">${escapeHtml(r.codigos || "-")}<br><small style="color:#64748b;">S/N: ${escapeHtml(r.series || "-")}</small></td>
             <td style="font-size:10.5px;">${escapeHtml(r.observacion || "-")}</td>
             <td style="text-align:center;">
-                <button class="btn-del-row" onclick="eliminarRegistroHistorial('${r.id}')" title="Eliminar este registro">🗑️</button>
+                <button class="btn-del-row" onclick="eliminarRegistroHistorial('${r.id}'); event.stopPropagation();" title="Eliminar este registro">🗑️</button>
             </td>
         `;
+
+        // 👇 NUEVO: Fila clickeable para ver el acta histórica
+        tr.style.cursor = "pointer";
+        tr.title = "Click para ver el acta de este movimiento";
+        tr.addEventListener('click', (e) => {
+            // Si el click fue en el botón de eliminar, no abrir el acta
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+            mostrarActaDesdeHistorial(r);
+        });
+
         tbody.appendChild(tr);
+    });
+}
+
+/* =========================================================
+   VISUALIZAR ACTA HISTÓRICA (click en fila del historial)
+========================================================= */
+function mostrarActaDesdeHistorial(registro) {
+    if (!registro) return;
+
+    // Clonar el acta original para no modificar la real
+    const actaOriginal = document.getElementById("actaDocumentoImpresion");
+    if (!actaOriginal) {
+        mostrarToast("No se encontró la plantilla del acta.", "error");
+        return;
+    }
+    const clon = actaOriginal.cloneNode(true);
+
+    // ── Fecha ──
+    const fechaEl = clon.querySelector("#actaFecha");
+    if (fechaEl) {
+        fechaEl.textContent = registro.fechaTexto || (registro.fecha ? new Date(registro.fecha).toLocaleDateString("es-PE", { day: 'numeric', month: 'long', year: 'numeric' }) : "");
+        fechaEl.removeAttribute("contenteditable");
+    }
+
+    // ── Acción (Entrega / Recepción) ──
+    const accionTxt = clon.querySelector("#actaAccionTxt");
+    const esEntrega = registro.tipo === "ENTREGA";
+    if (accionTxt) accionTxt.textContent = esEntrega ? "ENTREGA" : "RECEPCIÓN";
+
+    // ── Checkboxes ──
+    const boxEntrega = clon.querySelector("#boxEntrega");
+    const boxRecepcion = clon.querySelector("#boxRecepcion");
+    if (boxEntrega) boxEntrega.textContent = esEntrega ? "X" : "\u00A0";
+    if (boxRecepcion) boxRecepcion.textContent = esEntrega ? "\u00A0" : "X";
+
+    // ── Servidor (quien recibe o entrega) ──
+    const servidorNom = clon.querySelector("#actaServidorNom");
+    const servidorArea = clon.querySelector("#actaServidorArea");
+    if (servidorNom) {
+        servidorNom.textContent = registro.quienRecibe || "S/DATO";
+        servidorNom.removeAttribute("contenteditable");
+    }
+    if (servidorArea) {
+        servidorArea.textContent = registro.subArea || registro.area || registro.gerencia || "OFICINA GENERAL DE TECNOLOGÍAS DE LA INFORMACIÓN";
+        servidorArea.removeAttribute("contenteditable");
+    }
+
+    // ── Firmas ──
+    const sigNomIzq = clon.querySelector("#sigNomIzq");
+    const sigDniIzq = clon.querySelector("#sigDniIzq");
+    const sigTituloIzq = clon.querySelector("#sigTituloIzq");
+    const sigNomDer = clon.querySelector("#sigNomDer");
+    const sigDniDer = clon.querySelector("#sigDniDer");
+    const sigTituloDer = clon.querySelector("#sigTituloDer");
+
+    if (esEntrega) {
+        // OGTI entrega → servidor recibe
+        if (sigTituloIzq) sigTituloIzq.textContent = "ENTREGUÉ CONFORME";
+        if (sigNomIzq) sigNomIzq.textContent = registro.quienEntrega || CONFIG.ogti.nombre;
+        if (sigDniIzq) sigDniIzq.textContent = registro.quienEntregaDni || CONFIG.ogti.dni;
+        if (sigTituloDer) sigTituloDer.textContent = "RECIBÍ CONFORME";
+        if (sigNomDer) sigNomDer.textContent = registro.quienRecibe || "S/DATO";
+        if (sigDniDer) sigDniDer.textContent = registro.quienRecibeDni || "S/DNI";
+    } else {
+        // Servidor entrega (devuelve) → OGTI recibe
+        if (sigTituloIzq) sigTituloIzq.textContent = "ENTREGUÉ CONFORME";
+        if (sigNomIzq) sigNomIzq.textContent = registro.quienEntrega || "S/DATO";
+        if (sigDniIzq) sigDniIzq.textContent = registro.quienEntregaDni || "S/DNI";
+        if (sigTituloDer) sigTituloDer.textContent = "RECIBÍ CONFORME";
+        if (sigNomDer) sigNomDer.textContent = registro.quienRecibe || CONFIG.ogti.nombre;
+        if (sigDniDer) sigDniDer.textContent = registro.quienRecibeDni || CONFIG.ogti.dni;
+    }
+
+    // Quitar contenteditable de las firmas (es solo vista, no edición)
+    clon.querySelectorAll("[contenteditable]").forEach(el => el.removeAttribute("contenteditable"));
+
+    // ── Tabla de bienes ──
+    const tbody = clon.querySelector("#actaTableBody");
+    if (tbody) {
+        tbody.innerHTML = "";
+        const codigos = String(registro.codigos || "").split(",").map(s => s.trim()).filter(Boolean);
+        const series = String(registro.series || "").split(",").map(s => s.trim()).filter(Boolean);
+        const cantidad = registro.cantidad || 1;
+        const detalle = `${registro.tipoEquipo || "EQUIPO"} (HISTÓRICO)`;
+        const obs = registro.observacion || "OPERATIVO";
+
+        if (codigos.length <= 1) {
+            // Una sola fila con la cantidad total
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>01</td>
+                <td>${escapeHtml(detalle)}</td>
+                <td>${cantidad}</td>
+                <td style="font-family:'JetBrains Mono', monospace;">${escapeHtml(series[0] || "S/N")}</td>
+                <td style="font-family:'JetBrains Mono', monospace;">${escapeHtml(codigos[0] || "S/C")}</td>
+                <td>${escapeHtml(obs)}</td>
+            `;
+            tbody.appendChild(tr);
+        } else {
+            // Una fila por cada código
+            codigos.forEach((cod, idx) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${String(idx + 1).padStart(2, "0")}</td>
+                    <td>${escapeHtml(detalle)}</td>
+                    <td>1</td>
+                    <td style="font-family:'JetBrains Mono', monospace;">${escapeHtml(series[idx] || "S/N")}</td>
+                    <td style="font-family:'JetBrains Mono', monospace;">${escapeHtml(cod)}</td>
+                    <td>${escapeHtml(obs)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    // ── Quitar el botón de eliminar fila de la tabla clonada ──
+    clon.querySelectorAll(".btn-del-row").forEach(b => b.remove());
+
+    // ── Quitar la columna de acciones (🗑️) del thead y de las filas ──
+    const thead = clon.querySelector("thead tr");
+    if (thead && thead.cells.length > 6) thead.deleteCell(6);
+    clon.querySelectorAll("tbody tr").forEach(tr => {
+        if (tr.cells.length > 6) tr.deleteCell(6);
+    });
+
+    // ══════════════════════════════════════════════════════════
+    // MODAL VISUALIZADOR
+    // ══════════════════════════════════════════════════════════
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.id = "modalActaHistorial";
+    overlay.style.zIndex = "100002";
+    overlay.style.alignItems = "flex-start";
+    overlay.style.padding = "20px";
+    overlay.style.overflowY = "auto";
+
+    overlay.innerHTML = `
+        <div style="background:#fff; border-radius:var(--radius-lg); max-width:210mm; width:100%; padding:20px; box-shadow:var(--shadow-xl); position:relative; margin:auto;">
+
+            <!-- Barra superior con botones -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid var(--border); position:sticky; top:0; background:#fff; z-index:10;">
+                <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+                    <div style="font-size:13px; font-weight:800; color:var(--primary);">📄 Acta Histórica</div>
+                    <div style="font-size:11px; color:var(--text-muted);">
+                        ${escapeHtml(registro.fechaTexto || "")} · ${esEntrega ? "Entrega" : "Devolución"} · ${escapeHtml(registro.tipoEquipo || "")}
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-green" id="btnImprimirActaHist" style="min-height:38px;">
+                        🖨️ Imprimir / PDF
+                    </button>
+                    <button class="btn btn-gray" id="btnCerrarActaHist" style="min-height:38px;">
+                        ✕ Cerrar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Contenedor del acta clonada -->
+            <div id="actaHistorialContenido"></div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Insertar el acta clonada dentro del contenedor
+    const contenedor = overlay.querySelector("#actaHistorialContenido");
+    if (contenedor) {
+        clon.style.display = "block";
+        clon.style.margin = "0 auto";
+        contenedor.appendChild(clon);
+    }
+
+    // ── Botón cerrar ──
+    const btnCerrar = overlay.querySelector("#btnCerrarActaHist");
+    const cerrar = () => {
+        overlay.remove();
+        document.removeEventListener("keydown", onEsc);
+    };
+    if (btnCerrar) btnCerrar.onclick = cerrar;
+
+    // ── Botón imprimir/PDF ──
+    const btnImprimir = overlay.querySelector("#btnImprimirActaHist");
+    if (btnImprimir) {
+        btnImprimir.onclick = () => {
+            // Clonar el acta para imprimir (sin el modal)
+            const clonImpresion = clon.cloneNode(true);
+            abrirVentanaImpresion(clonImpresion.outerHTML, `
+                @page { size: A4 portrait; margin: 0; }
+                body { margin: 0; padding: 0; background: #fff; }
+                .acta-documento-a4 {
+                    width: 210mm !important; min-height: 297mm !important;
+                    padding: 15mm 18mm 45mm 22mm !important;
+                    box-shadow: none !important; margin: 0 auto !important;
+                    position: relative !important;
+                }
+                .acta-bloque-pie { position: absolute !important; left: 22mm !important; right: 18mm !important; bottom: 45mm !important; }
+                .acta-table thead { display: table-header-group !important; }
+                .acta-table tr { page-break-inside: avoid !important; }
+                .acta-footer-note-bottom { position: absolute; left: 22mm; right: 18mm; bottom: 12mm; text-align: center; }
+            `);
+        };
+    }
+
+    // ── Cerrar con ESC ──
+    const onEsc = (e) => { if (e.key === "Escape") cerrar(); };
+    document.addEventListener("keydown", onEsc);
+
+    // ── Cerrar al hacer click fuera del cuadro blanco ──
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) cerrar();
     });
 }
 
