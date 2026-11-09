@@ -1250,6 +1250,132 @@
         .main-content { margin-left: 0 !important; }
         .card:not(.reporte-a4-documento):not(.acta-documento-a4) > * { display: none !important; }
     }
+	
+	/* ==================== SCANNER V4 — MEJORAS ==================== */
+.scanner-tabs {
+    display: flex;
+    background: var(--bg-alt);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.scanner-tab {
+    flex: 1;
+    padding: 12px;
+    font-size: 12.5px;
+    font-weight: 800;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+.scanner-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: #fff;
+}
+.scanner-panel { flex-shrink: 0; }
+
+/* Guía que cambia a verde al detectar */
+.scanner-guide-box {
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.scanner-guide-box.detected {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 9999px rgba(16,185,129,0.25), 0 0 0 4px rgba(16,185,129,0.5);
+    animation: pulseGreen 0.8s ease 2;
+}
+.scanner-guide-box.detected::before,
+.scanner-guide-box.detected::after {
+    border-color: #10b981 !important;
+}
+@keyframes pulseGreen {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+}
+.scanner-laser-line.detected {
+    background: linear-gradient(90deg, transparent, #10b981, transparent);
+    animation: none;
+    top: 50%;
+    opacity: 0;
+}
+
+/* Badge verde de éxito */
+.scanner-success-badge {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(16,185,129,0.5);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 20;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.scanner-success-badge.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Dropzone de archivos */
+.scanner-dropzone {
+    margin: 16px;
+    padding: 32px 20px;
+    border: 2.5px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--bg-alt);
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.scanner-dropzone:hover,
+.scanner-dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    transform: scale(1.01);
+}
+.scanner-dropzone-icon {
+    font-size: 42px;
+    margin-bottom: 8px;
+}
+.scanner-dropzone-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+.scanner-dropzone-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.scanner-dropzone-formats {
+    font-size: 10.5px;
+    color: var(--text-soft);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* Animación de detección exitosa */
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+.scanner-video-wrapper.detected-flash {
+    animation: successPulse 0.4s ease;
+}
+	
     </style>
 </head>
 <body>
@@ -1426,10 +1552,10 @@
                 <datalist id="listaAutocompletarCodigos"></datalist>
                 <button class="btn btn-blue" onclick="buscarPorCodigo()">Consultar Bien</button>
                 <!-- NUEVO: Botón de cámara para escanear código de barras -->
-                <button class="btn btn-camera" onclick="abrirEscanerCodigoBarras()" title="Escanear código de barras con la cámara">
-                    <svg class="svg-icon" viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                    <span class="camera-btn-label">Escanear</span>
-                </button>
+                <button class="btn btn-camera" onclick="abrirEscanerCodigoBarras()" title="Escanear código de barras o subir imagen">
+				<svg class="svg-icon" viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+				<span class="camera-btn-label">Escanear</span>
+				</button>
                 <button class="btn btn-gray" onclick="limpiarConsulta()">🧹 Limpiar</button>
             </div>
         </div>
@@ -1823,6 +1949,7 @@
 </div>
 
 <!-- ================= SCANNER MODAL (V2) ================= -->
+<!-- ================= SCANNER MODAL (V4) ================= -->
 <div id="scannerModal" class="scanner-modal-overlay" style="display:none;">
     <div class="scanner-container">
         <div class="scanner-header">
@@ -1830,38 +1957,77 @@
             <button class="scanner-close-btn" onclick="cerrarEscanerCodigoBarras()" title="Cerrar">✕</button>
         </div>
 
-        <div class="scanner-video-wrapper" id="scannerVideoWrapper">
-            <video id="scannerVideo" autoplay playsinline muted></video>
-            <canvas id="scannerSnapshot"></canvas>
-            <div class="scanner-overlay-guide">
-                <div class="scanner-guide-box">
-                    <div class="scanner-laser-line"></div>
+        <!-- Tabs: Cámara / Archivo -->
+        <div class="scanner-tabs">
+            <button class="scanner-tab active" id="scannerTabCamara" onclick="cambiarTabScanner('camara')">
+                📸 Cámara
+            </button>
+            <button class="scanner-tab" id="scannerTabArchivo" onclick="cambiarTabScanner('archivo')">
+                📁 Subir archivo
+            </button>
+        </div>
+
+        <!-- Panel Cámara -->
+        <div id="scannerPanelCamara" class="scanner-panel">
+            <div class="scanner-video-wrapper" id="scannerVideoWrapper">
+                <video id="scannerVideo" autoplay playsinline muted></video>
+                <canvas id="scannerSnapshot"></canvas>
+                <div class="scanner-overlay-guide" id="scannerOverlayGuide">
+                    <div class="scanner-guide-box" id="scannerGuideBox">
+                        <div class="scanner-laser-line"></div>
+                    </div>
+                </div>
+                <div class="scanner-flash" id="scannerFlash"></div>
+                <div class="scanner-success-badge" id="scannerSuccessBadge">
+                    ✅ ¡Código detectado!
                 </div>
             </div>
-            <div class="scanner-flash" id="scannerFlash"></div>
+        </div>
+
+        <!-- Panel Archivo -->
+        <div id="scannerPanelArchivo" class="scanner-panel" style="display:none;">
+            <div class="scanner-dropzone" id="scannerDropzone"
+                 onclick="document.getElementById('scannerFileInput').click()"
+                 ondragover="event.preventDefault(); this.classList.add('drag-over');"
+                 ondragleave="this.classList.remove('drag-over');"
+                 ondrop="manejarDropArchivo(event)">
+                <div class="scanner-dropzone-icon">📁</div>
+                <div class="scanner-dropzone-title">Arrastra una imagen aquí</div>
+                <div class="scanner-dropzone-sub">o haz clic para seleccionar</div>
+                <div class="scanner-dropzone-formats">JPG, PNG, WEBP, BMP · Máx. 10 MB</div>
+                <input type="file" id="scannerFileInput" accept="image/*" style="display:none"
+                       onchange="procesarArchivoImagen(this.files[0])">
+            </div>
+            <div id="scannerFilePreviewWrapper" style="display:none; margin-top:12px;">
+                <canvas id="scannerFilePreviewCanvas" style="max-width:100%; border-radius:8px; border:2px solid var(--border);"></canvas>
+            </div>
         </div>
 
         <div class="scanner-info">
-            <p class="scanner-hint" id="scannerHint">Apunta al código de barras y pulsa <b>Capturar</b></p>
+            <p class="scanner-hint" id="scannerHint">Apunta al código de barras. La detección es automática.</p>
 
             <div class="scanner-status" id="scannerStatus">
                 <span>⏳ Iniciando cámara...</span>
             </div>
 
-            <div class="scanner-actions">
-                <button class="btn btn-capture" id="btnCapturar" onclick="capturarYLeerCodigo()" disabled>
-                    📸 Capturar
-                </button>
+            <div class="scanner-actions" id="scannerActionsCamara">
                 <button class="btn btn-retry" id="btnReintentar" onclick="reiniciarCamara()" style="display:none;">
                     🔄 Reintentar
                 </button>
                 <button class="btn btn-flash" id="btnLinterna" onclick="toggleLinterna()" title="Linterna" style="display:none;">
                     🔦
                 </button>
+                <button class="btn btn-flash" id="btnCambiarCamara" onclick="cambiarCamara()" title="Cambiar cámara" style="display:none;">
+                    🔄
+                </button>
+                <button class="btn btn-blue" id="btnEscanearAuto" onclick="toggleEscaneoAuto()" style="flex:2;">
+                    ▶️ Escaneo automático
+                </button>
             </div>
 
             <div class="scanner-manual-input">
-                <input type="text" id="scannerManualInput" placeholder="O ingresa el código manualmente..." onkeypress="if(event.key === 'Enter') usarCodigoManual()">
+                <input type="text" id="scannerManualInput" placeholder="O ingresa el código manualmente..."
+                       onkeypress="if(event.key === 'Enter') usarCodigoManual()">
                 <button class="btn btn-blue" onclick="usarCodigoManual()" style="min-height:42px;">Usar</button>
             </div>
         </div>
@@ -1916,11 +2082,7 @@ let historialActas = [];
 let historialOrden = { campo: "fecha", dir: "desc" };
 let m3SubTabActual = "actaEmisionPanel";
 
-// === NUEVO: Variables del escáner de código de barras ===
-let scannerStream = null;
-let scannerCodeReader = null;
-let scannerActivo = false;
-let scannerAnimFrame = null;
+
 
 const coloresMarcasCatalogo = {
     "HP": "#0284c7", "LENOVO": "#dc2626", "DELL": "#0d9488", "ACER": "#16a34a",
@@ -2134,48 +2296,182 @@ function debounce(key, fn, wait = 250) {
 /* =========================================================
    ESCÁNER DE CÓDIGO DE BARRAS v3 — Compatible con ZXing 0.20
 ========================================================= */
-let scannerReaderZXing = null;
+/* =========================================================
+   ESCÁNER DE CÓDIGO DE BARRAS v4
+   - Soporte explícito CODE_128
+   - Escaneo continuo automático con detección en vivo
+   - Subida de archivo/imagen desde PC
+   - Guía verde al detectar + vibración/beep
+   - Linterna + cambio de cámara
+========================================================= */
+let scannerStream = null;
+let scannerReader = null;
+let scannerActivo = false;
+let scannerEscaneoAuto = false;
+let scannerLoopTimeout = null;
+let scannerFacingMode = "environment";
+let scannerUltimoCodigo = "";
+let scannerUltimoTimestamp = 0;
+
+// Hints para ZXing: prioriza CODE_128 y formatos lineales comunes
+function construirHintsZXing() {
+    if (typeof ZXing === "undefined") return null;
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.CODE_128,      // ← Prioridad solicitada
+        ZXing.BarcodeFormat.CODE_39,
+        ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.CODABAR,
+        ZXing.BarcodeFormat.ITF,
+        ZXing.BarcodeFormat.EAN_13,
+        ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.UPC_E,
+        ZXing.BarcodeFormat.QR_CODE,
+        ZXing.BarcodeFormat.DATA_MATRIX,
+        ZXing.BarcodeFormat.PDF_417,
+        ZXing.BarcodeFormat.AZTEC
+    ]);
+    return hints;
+}
+
+function obtenerReaderZXing() {
+    if (typeof ZXing === "undefined" || window.__ZXING_FAILED__) return null;
+    if (!scannerReader) {
+        const hints = construirHintsZXing();
+        scannerReader = new ZXing.BrowserMultiFormatReader(hints);
+    }
+    return scannerReader;
+}
+
+// Beep corto con Web Audio (sin archivos externos)
+function beepExito() {
+    try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        const ctx = new AC();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+        setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
+    } catch (e) {}
+}
+
+// Vibración en móvil
+function vibrarExito() {
+    if (navigator.vibrate) {
+        try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+    }
+}
+
+function limpiarCodigoEscaneado(txt) {
+    if (!txt) return "";
+    return String(txt)
+        .replace(/[\r\n\t]/g, "")
+        .replace(/^\*+|\*+$/g, "")
+        .trim();
+}
 
 async function abrirEscanerCodigoBarras() {
     if (typeof ZXing === "undefined" || window.__ZXING_FAILED__) {
         mostrarToast("Librería de escaneo no disponible. Recarga la página.", "error", 6000);
         return;
     }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        mostrarToast("Tu navegador no soporta acceso a la cámara. Usa la entrada manual.", "error", 6000);
-        return;
-    }
 
     const modal = document.getElementById("scannerModal");
-    const video = document.getElementById("scannerVideo");
-    const statusEl = document.getElementById("scannerStatus");
-    const btnCapturar = document.getElementById("btnCapturar");
-    const btnReintentar = document.getElementById("btnReintentar");
-    const btnLinterna = document.getElementById("btnLinterna");
-    const videoWrapper = document.getElementById("scannerVideoWrapper");
-    const snapshot = document.getElementById("scannerSnapshot");
-    const hint = document.getElementById("scannerHint");
-
-    if (!modal || !video) return;
+    if (!modal) return;
 
     // Reset visual
     modal.style.display = "flex";
-    videoWrapper.classList.remove("snapshot-mode");
-    snapshot.style.display = "none";
-    btnCapturar.style.display = "inline-flex";
-    btnCapturar.disabled = true;
-    btnReintentar.style.display = "none";
-    btnLinterna.style.display = "none";
-    hint.innerHTML = 'Apunta al código de barras y pulsa <b>Capturar</b>';
-    statusEl.className = "scanner-status scanning";
-    statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Iniciando cámara...';
+    cambiarTabScanner("camara");
+    reiniciarEstadoVisualScanner();
+
+    // Reset manual input
+    const manualInput = document.getElementById("scannerManualInput");
+    if (manualInput) manualInput.value = "";
+
+    // Reset archivo
+    const fileInput = document.getElementById("scannerFileInput");
+    if (fileInput) fileInput.value = "";
+    const previewWrapper = document.getElementById("scannerFilePreviewWrapper");
+    if (previewWrapper) previewWrapper.style.display = "none";
 
     scannerActivo = true;
+    scannerEscaneoAuto = false;
+    scannerUltimoCodigo = "";
+    scannerUltimoTimestamp = 0;
+
+    // Verificar soporte de cámara
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const statusEl = document.getElementById("scannerStatus");
+        if (statusEl) {
+            statusEl.className = "scanner-status error";
+            statusEl.innerHTML = "❌ Tu navegador no soporta cámara. Usa la pestaña <b>Subir archivo</b>.";
+        }
+        cambiarTabScanner("archivo");
+        return;
+    }
+
+    await iniciarCamara();
+}
+
+function reiniciarEstadoVisualScanner() {
+    const videoWrapper = document.getElementById("scannerVideoWrapper");
+    const snapshot = document.getElementById("scannerSnapshot");
+    const guideBox = document.getElementById("scannerGuideBox");
+    const successBadge = document.getElementById("scannerSuccessBadge");
+    const laser = document.querySelector(".scanner-laser-line");
+    const statusEl = document.getElementById("scannerStatus");
+    const hint = document.getElementById("scannerHint");
+    const btnReintentar = document.getElementById("btnReintentar");
+    const btnLinterna = document.getElementById("btnLinterna");
+    const btnCambiarCamara = document.getElementById("btnCambiarCamara");
+    const btnAuto = document.getElementById("btnEscanearAuto");
+
+    if (videoWrapper) videoWrapper.classList.remove("snapshot-mode", "detected-flash");
+    if (snapshot) snapshot.style.display = "none";
+    if (guideBox) guideBox.classList.remove("detected");
+    if (successBadge) successBadge.classList.remove("show");
+    if (laser) laser.classList.remove("detected");
+    if (hint) hint.innerHTML = "Apunta al código de barras. La detección es automática.";
+    if (statusEl) {
+        statusEl.className = "scanner-status scanning";
+        statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Iniciando cámara...';
+    }
+    if (btnReintentar) btnReintentar.style.display = "none";
+    if (btnLinterna) { btnLinterna.style.display = "none"; btnLinterna.classList.remove("flash-on"); }
+    if (btnCambiarCamara) btnCambiarCamara.style.display = "none";
+    if (btnAuto) { btnAuto.innerHTML = "▶️ Escaneo automático"; btnAuto.classList.remove("btn-green"); btnAuto.classList.add("btn-blue"); }
+}
+
+async function iniciarCamara() {
+    const video = document.getElementById("scannerVideo");
+    const statusEl = document.getElementById("scannerStatus");
+    const btnAuto = document.getElementById("btnEscanearAuto");
+    const btnCambiarCamara = document.getElementById("btnCambiarCamara");
+    const btnLinterna = document.getElementById("btnLinterna");
+
+    if (!video) return;
+
+    // Detener stream previo si existe
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(t => t.stop());
+        scannerStream = null;
+    }
 
     try {
         const constraints = {
             video: {
-                facingMode: { ideal: "environment" },
+                facingMode: { ideal: scannerFacingMode },
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             },
@@ -2186,207 +2482,394 @@ async function abrirEscanerCodigoBarras() {
         video.srcObject = scannerStream;
         await video.play();
 
-        // Verificar si hay linterna disponible
+        // Verificar linterna
         try {
             const track = scannerStream.getVideoTracks()[0];
             const caps = track.getCapabilities ? track.getCapabilities() : {};
-            if (caps.torch) {
-                btnLinterna.style.display = "inline-flex";
+            if (caps.torch && btnLinterna) btnLinterna.style.display = "inline-flex";
+        } catch (e) {}
+
+        // Verificar múltiples cámaras
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const vids = devices.filter(d => d.kind === "videoinput");
+            if (vids.length > 1 && btnCambiarCamara) {
+                btnCambiarCamara.style.display = "inline-flex";
             }
         } catch (e) {}
 
-        statusEl.className = "scanner-status scanning";
-        statusEl.innerHTML = '📷 Cámara lista. Encuadra el código y pulsa <b>Capturar</b>';
-        btnCapturar.disabled = false;
+        if (statusEl) {
+            statusEl.className = "scanner-status scanning";
+            statusEl.innerHTML = "📷 Cámara lista. Encuadra el código.";
+        }
+
+        if (btnAuto) btnAuto.disabled = false;
+
+        // Iniciar escaneo automático por defecto
+        iniciarEscaneoAuto();
 
     } catch (err) {
-        console.error("[scanner]", err);
+        console.error("[scanner iniciarCamara]", err);
         let mensaje = "No se pudo acceder a la cámara.";
-        if (err.name === "NotAllowedError") {
-            mensaje = "Permiso de cámara denegado. Habilita el acceso en tu navegador.";
-        } else if (err.name === "NotFoundError") {
-            mensaje = "No se encontró ninguna cámara en este dispositivo.";
-        } else if (err.name === "NotReadableError") {
-            mensaje = "La cámara está siendo usada por otra aplicación.";
+        if (err.name === "NotAllowedError") mensaje = "Permiso de cámara denegado. Habilítalo en tu navegador.";
+        else if (err.name === "NotFoundError") mensaje = "No se encontró cámara. Usa <b>Subir archivo</b>.";
+        else if (err.name === "NotReadableError") mensaje = "La cámara está siendo usada por otra app.";
+
+        if (statusEl) {
+            statusEl.className = "scanner-status error";
+            statusEl.innerHTML = `❌ ${mensaje}`;
         }
-        statusEl.className = "scanner-status error";
-        statusEl.innerHTML = `❌ ${mensaje}`;
-        btnCapturar.disabled = true;
-        mostrarToast(mensaje, "error", 5000);
+        if (btnAuto) btnAuto.disabled = true;
     }
 }
 
-// Captura el frame actual y lee el código de barras (VERSIÓN QUE SÍ FUNCIONA)
-async function capturarYLeerCodigo() {
-    const video = document.getElementById("scannerVideo");
-    const snapshot = document.getElementById("scannerSnapshot");
-    const videoWrapper = document.getElementById("scannerVideoWrapper");
-    const flash = document.getElementById("scannerFlash");
-    const statusEl = document.getElementById("scannerStatus");
-    const btnCapturar = document.getElementById("btnCapturar");
-    const btnReintentar = document.getElementById("btnReintentar");
-    const hint = document.getElementById("scannerHint");
+function toggleEscaneoAuto() {
+    if (scannerEscaneoAuto) {
+        detenerEscaneoAuto();
+    } else {
+        iniciarEscaneoAuto();
+    }
+}
 
-    if (!video || !snapshot) return;
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-        mostrarToast("La cámara aún no está lista. Espera un momento.", "warning");
+function iniciarEscaneoAuto() {
+    const btnAuto = document.getElementById("btnEscanearAuto");
+    const hint = document.getElementById("scannerHint");
+    const statusEl = document.getElementById("scannerStatus");
+
+    scannerEscaneoAuto = true;
+    if (btnAuto) {
+        btnAuto.innerHTML = "⏸️ Detener escaneo";
+        btnAuto.classList.remove("btn-blue");
+        btnAuto.classList.add("btn-green");
+    }
+    if (hint) hint.innerHTML = "🔍 Escaneando automáticamente... mantén el código dentro del recuadro.";
+    if (statusEl) {
+        statusEl.className = "scanner-status scanning";
+        statusEl.innerHTML = "🔍 Buscando código de barras...";
+    }
+
+    programarSiguienteEscaneo();
+}
+
+function detenerEscaneoAuto() {
+    const btnAuto = document.getElementById("btnEscanearAuto");
+    scannerEscaneoAuto = false;
+    if (scannerLoopTimeout) {
+        clearTimeout(scannerLoopTimeout);
+        scannerLoopTimeout = null;
+    }
+    if (btnAuto) {
+        btnAuto.innerHTML = "▶️ Escaneo automático";
+        btnAuto.classList.remove("btn-green");
+        btnAuto.classList.add("btn-blue");
+    }
+}
+
+function programarSiguienteEscaneo() {
+    if (!scannerEscaneoAuto || !scannerActivo) return;
+    scannerLoopTimeout = setTimeout(escanearFrameActual, 350);
+}
+
+async function escanearFrameActual() {
+    if (!scannerEscaneoAuto || !scannerActivo) return;
+
+    const video = document.getElementById("scannerVideo");
+    const reader = obtenerReaderZXing();
+    if (!video || !reader || video.readyState < 2) {
+        programarSiguienteEscaneo();
         return;
     }
 
-    btnCapturar.disabled = true;
-
-    // Efecto flash
-    flash.classList.add("flash-active");
-    setTimeout(() => flash.classList.remove("flash-active"), 150);
-
-    // Capturar frame
     const w = video.videoWidth;
     const h = video.videoHeight;
-    if (!w || !h) {
-        mostrarToast("No se pudo capturar la imagen. Intenta de nuevo.", "error");
-        btnCapturar.disabled = false;
+    if (!w || !h) { programarSiguienteEscaneo(); return; }
+
+    // Canvas offscreen para no interferir con el snapshot visible
+    if (!window.__scannerOffscreenCanvas) {
+        window.__scannerOffscreenCanvas = document.createElement("canvas");
+    }
+    const canvas = window.__scannerOffscreenCanvas;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0, w, h);
+
+    try {
+        const luminances = reader.decodeFromCanvas(canvas);
+        if (luminances && luminances.getText && luminances.getText()) {
+            manejarCodigoDetectado(luminances.getText(), "cámara");
+            return; // éxito → no programar siguiente
+        }
+    } catch (e) {
+        // No se detectó código, continuar
+    }
+
+    programarSiguienteEscaneo();
+}
+
+function manejarCodigoDetectado(codigoRaw, origen) {
+    const codigo = limpiarCodigoEscaneado(codigoRaw);
+    if (!codigo) {
+        programarSiguienteEscaneo();
         return;
     }
 
-    snapshot.width = w;
-    snapshot.height = h;
-    const ctx = snapshot.getContext("2d", { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0, w, h);
-
-    // Mostrar snapshot congelado
-    videoWrapper.classList.add("snapshot-mode");
-    hint.innerHTML = '🔍 Procesando imagen...';
-
-    statusEl.className = "scanner-status scanning";
-    statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Leyendo código...';
-
-    // Esperar un frame para que se renderice
-    await new Promise(r => setTimeout(r, 150));
-
-    // ══════ MÉTODO CORRECTO PARA ZXING 0.20 ══════
-    // Usar decodeFromImageElement() con una imagen temporal generada desde el canvas.
-    // Este método SÍ funciona en la versión 0.20 del bundle UMD.
-    let codigoDetectado = null;
-
-    try {
-        const imageDataURL = snapshot.toDataURL("image/png");
-
-        // Crear un <img> temporal con la captura
-        const tempImg = new Image();
-        tempImg.src = imageDataURL;
-
-        // Esperar a que cargue
-        await new Promise((resolve, reject) => {
-            tempImg.onload = resolve;
-            tempImg.onerror = reject;
-            if (tempImg.complete) resolve();
-        });
-
-        // Crear el reader de ZXing
-        if (!scannerReaderZXing) {
-            scannerReaderZXing = new ZXing.BrowserMultiFormatReader();
-        }
-
-        // decodeFromImageElement es asíncrono y devuelve un Result o lanza excepción
-        try {
-            const result = await scannerReaderZXing.decodeFromImageElement(tempImg);
-            if (result && result.getText && result.getText()) {
-                codigoDetectado = result.getText();
-            }
-        } catch (decodeErr) {
-            // Intento alternativo: algunos códigos requieren pasar hints
-            try {
-                const hints = new Map();
-                hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-                hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-                    ZXing.BarcodeFormat.CODE_128,
-                    ZXing.BarcodeFormat.CODE_39,
-                    ZXing.BarcodeFormat.CODE_93,
-                    ZXing.BarcodeFormat.EAN_13,
-                    ZXing.BarcodeFormat.EAN_8,
-                    ZXing.BarcodeFormat.UPC_A,
-                    ZXing.BarcodeFormat.UPC_E,
-                    ZXing.BarcodeFormat.QR_CODE,
-                    ZXing.BarcodeFormat.DATA_MATRIX,
-                    ZXing.BarcodeFormat.ITF,
-                    ZXing.BarcodeFormat.CODABAR
-                ]);
-                scannerReaderZXing = new ZXing.BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
-                const result2 = await scannerReaderZXing.decodeFromImageElement(tempImg);
-                if (result2 && result2.getText && result2.getText()) {
-                    codigoDetectado = result2.getText();
-                }
-            } catch (decodeErr2) {
-                // Falló también el segundo intento
-            }
-        }
-    } catch (e) {
-        console.error("[capturarYLeerCodigo]", e);
+    // Anti-rebote: no repetir el mismo código en < 2s
+    const ahora = Date.now();
+    if (codigo === scannerUltimoCodigo && (ahora - scannerUltimoTimestamp) < 2000) {
+        programarSiguienteEscaneo();
+        return;
     }
+    scannerUltimoCodigo = codigo;
+    scannerUltimoTimestamp = ahora;
 
-    if (codigoDetectado) {
-        // ¡Éxito!
-        codigoDetectado = String(codigoDetectado).replace(/[\r\n\t]/g, "").trim().replace(/^\*+|\*+$/g, "");
+    // Detener escaneo auto
+    detenerEscaneoAuto();
 
-        statusEl.className = "scanner-status success";
-        statusEl.innerHTML = `✅ Código detectado: <b>${escapeHtml(codigoDetectado)}</b>`;
-        hint.innerHTML = '✅ ¡Código leído! Buscando equipo...';
-
-        mostrarToast(`Código escaneado: ${codigoDetectado}`, "success", 2500);
-
-        setTimeout(() => {
-            cerrarEscanerCodigoBarras();
-            const inputCod = document.getElementById("inCod");
-            if (inputCod) inputCod.value = codigoDetectado;
-            buscarPorCodigo();
-        }, 800);
-    } else {
-        // Falló la lectura
-        statusEl.className = "scanner-status error";
-        statusEl.innerHTML = '❌ No se pudo leer el código. Intenta de nuevo.';
-        hint.innerHTML = 'Ajusta la distancia, el enfoque o la iluminación y pulsa <b>Reintentar</b>.';
-
-        btnCapturar.style.display = "none";
-        btnReintentar.style.display = "inline-flex";
-    }
-}
-
-// Vuelve al modo cámara en vivo (para reintentar)
-async function reiniciarCamara() {
+    // Feedback visual
+    const guideBox = document.getElementById("scannerGuideBox");
+    const successBadge = document.getElementById("scannerSuccessBadge");
     const videoWrapper = document.getElementById("scannerVideoWrapper");
-    const snapshot = document.getElementById("scannerSnapshot");
+    const laser = document.querySelector(".scanner-laser-line");
     const statusEl = document.getElementById("scannerStatus");
-    const btnCapturar = document.getElementById("btnCapturar");
-    const btnReintentar = document.getElementById("btnReintentar");
     const hint = document.getElementById("scannerHint");
 
-    videoWrapper.classList.remove("snapshot-mode");
-    snapshot.style.display = "none";
+    if (guideBox) guideBox.classList.add("detected");
+    if (laser) laser.classList.add("detected");
+    if (videoWrapper) {
+        videoWrapper.classList.add("detected-flash");
+        setTimeout(() => videoWrapper.classList.remove("detected-flash"), 400);
+    }
+    if (successBadge) {
+        successBadge.classList.add("show");
+        successBadge.innerHTML = `✅ ${escapeHtml(codigo)}`;
+    }
+    if (statusEl) {
+        statusEl.className = "scanner-status success";
+        statusEl.innerHTML = `✅ Código detectado (${origen}): <b>${escapeHtml(codigo)}</b>`;
+    }
+    if (hint) hint.innerHTML = "✅ ¡Código leído! Buscando equipo...";
 
-    btnReintentar.style.display = "none";
-    btnCapturar.style.display = "inline-flex";
-    btnCapturar.disabled = false;
+    // Feedback táctil/sonoro
+    vibrarExito();
+    beepExito();
 
-    hint.innerHTML = 'Apunta al código de barras y pulsa <b>Capturar</b>';
-    statusEl.className = "scanner-status scanning";
-    statusEl.innerHTML = '📷 Cámara lista. Encuadra el código y pulsa <b>Capturar</b>';
+    mostrarToast(`Código escaneado: ${codigo}`, "success", 2500);
+
+    // Cerrar y buscar tras 900ms
+    setTimeout(() => {
+        cerrarEscanerCodigoBarras();
+        const inputCod = document.getElementById("inCod");
+        if (inputCod) inputCod.value = codigo;
+        buscarPorCodigo();
+    }, 900);
 }
 
-// Linterna (solo móviles compatibles)
+async function capturarYLeerCodigo() {
+    // Legacy: mantener por compatibilidad — usa escaneo del frame actual
+    const video = document.getElementById("scannerVideo");
+    const flash = document.getElementById("scannerFlash");
+    if (!video) return;
+
+    if (flash) {
+        flash.classList.add("flash-active");
+        setTimeout(() => flash.classList.remove("flash-active"), 150);
+    }
+
+    const reader = obtenerReaderZXing();
+    if (!reader || video.readyState < 2) {
+        mostrarToast("La cámara aún no está lista.", "warning");
+        return;
+    }
+
+    const w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) { mostrarToast("No se pudo capturar la imagen.", "error"); return; }
+
+    if (!window.__scannerOffscreenCanvas) {
+        window.__scannerOffscreenCanvas = document.createElement("canvas");
+    }
+    const canvas = window.__scannerOffscreenCanvas;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d", { willReadFrequently: true }).drawImage(video, 0, 0, w, h);
+
+    try {
+        const result = reader.decodeFromCanvas(canvas);
+        if (result && result.getText && result.getText()) {
+            manejarCodigoDetectado(result.getText(), "captura");
+        } else {
+            mostrarToast("No se detectó código. Intenta de nuevo.", "warning");
+        }
+    } catch (e) {
+        mostrarToast("No se pudo leer el código. Ajusta la iluminación o la distancia.", "warning");
+    }
+}
+
+function cambiarTabScanner(tab) {
+    const tabCamara = document.getElementById("scannerTabCamara");
+    const tabArchivo = document.getElementById("scannerTabArchivo");
+    const panelCamara = document.getElementById("scannerPanelCamara");
+    const panelArchivo = document.getElementById("scannerPanelArchivo");
+    const actionsCamara = document.getElementById("scannerActionsCamara");
+
+    if (tab === "camara") {
+        if (tabCamara) tabCamara.classList.add("active");
+        if (tabArchivo) tabArchivo.classList.remove("active");
+        if (panelCamara) panelCamara.style.display = "block";
+        if (panelArchivo) panelArchivo.style.display = "none";
+        if (actionsCamara) actionsCamara.style.display = "flex";
+        // Reanudar cámara si estaba activa
+        if (scannerActivo && scannerStream) {
+            const video = document.getElementById("scannerVideo");
+            if (video && video.paused) video.play().catch(() => {});
+        }
+    } else {
+        if (tabCamara) tabCamara.classList.remove("active");
+        if (tabArchivo) tabArchivo.classList.add("active");
+        if (panelCamara) panelCamara.style.display = "none";
+        if (panelArchivo) panelArchivo.style.display = "block";
+        if (actionsCamara) actionsCamara.style.display = "none";
+        detenerEscaneoAuto();
+    }
+}
+
+async function manejarDropArchivo(ev) {
+    ev.preventDefault();
+    const dropzone = document.getElementById("scannerDropzone");
+    if (dropzone) dropzone.classList.remove("drag-over");
+    const file = ev.dataTransfer && ev.dataTransfer.files ? ev.dataTransfer.files[0] : null;
+    if (file) await procesarArchivoImagen(file);
+}
+
+async function procesarArchivoImagen(file) {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        mostrarToast("El archivo debe ser una imagen.", "error");
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        mostrarToast("La imagen es demasiado grande (máx. 10 MB).", "error");
+        return;
+    }
+
+    const statusEl = document.getElementById("scannerStatus");
+    if (statusEl) {
+        statusEl.className = "scanner-status scanning";
+        statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Procesando imagen...';
+    }
+
+    const reader = obtenerReaderZXing();
+    if (!reader) {
+        if (statusEl) {
+            statusEl.className = "scanner-status error";
+            statusEl.innerHTML = "❌ Lector no disponible.";
+        }
+        return;
+    }
+
+    try {
+        // Leer archivo como dataURL
+        const dataURL = await new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = reject;
+            fr.readAsDataURL(file);
+        });
+
+        // Cargar imagen
+        const img = await new Promise((resolve, reject) => {
+            const i = new Image();
+            i.onload = () => resolve(i);
+            i.onerror = reject;
+            i.src = dataURL;
+        });
+
+        // Mostrar preview en canvas
+        const previewCanvas = document.getElementById("scannerFilePreviewCanvas");
+        const previewWrapper = document.getElementById("scannerFilePreviewWrapper");
+        if (previewCanvas && previewWrapper) {
+            const maxW = 480;
+            const ratio = Math.min(1, maxW / img.width);
+            previewCanvas.width = img.width * ratio;
+            previewCanvas.height = img.height * ratio;
+            const pctx = previewCanvas.getContext("2d");
+            pctx.drawImage(img, 0, 0, previewCanvas.width, previewCanvas.height);
+            previewWrapper.style.display = "block";
+        }
+
+        // Decodificar con ZXing (decodeFromImageElement sí existe en 0.20)
+        let codigo = null;
+        try {
+            const result = reader.decodeFromImageElement(img);
+            if (result && result.getText && result.getText()) codigo = result.getText();
+        } catch (e1) {
+            // Intento 2: usar decodeFromCanvas con la imagen dibujada
+            try {
+                const c = document.createElement("canvas");
+                c.width = img.width;
+                c.height = img.height;
+                c.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
+                const result2 = reader.decodeFromCanvas(c);
+                if (result2 && result2.getText && result2.getText()) codigo = result2.getText();
+            } catch (e2) {
+                // Intento 3: escalar imagen 2x (útil para códigos pequeños)
+                try {
+                    const c2 = document.createElement("canvas");
+                    c2.width = img.width * 2;
+                    c2.height = img.height * 2;
+                    const ctx2 = c2.getContext("2d", { willReadFrequently: true });
+                    ctx2.imageSmoothingEnabled = false;
+                    ctx2.drawImage(img, 0, 0, c2.width, c2.height);
+                    const result3 = reader.decodeFromCanvas(c2);
+                    if (result3 && result3.getText && result3.getText()) codigo = result3.getText();
+                } catch (e3) {}
+            }
+        }
+
+        if (codigo) {
+            manejarCodigoDetectado(codigo, "archivo");
+        } else {
+            if (statusEl) {
+                statusEl.className = "scanner-status error";
+                statusEl.innerHTML = "❌ No se detectó código en la imagen. Prueba con otra más nítida o con mejor contraste.";
+            }
+            mostrarToast("No se detectó ningún código en la imagen.", "warning", 5000);
+        }
+    } catch (err) {
+        console.error("[procesarArchivoImagen]", err);
+        if (statusEl) {
+            statusEl.className = "scanner-status error";
+            statusEl.innerHTML = "❌ Error al procesar la imagen.";
+        }
+    }
+}
+
+async function reiniciarCamara() {
+    reiniciarEstadoVisualScanner();
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(t => t.stop());
+        scannerStream = null;
+    }
+    await iniciarCamara();
+}
+
+async function cambiarCamara() {
+    scannerFacingMode = scannerFacingMode === "environment" ? "user" : "environment";
+    mostrarToast(`Cambiando a cámara ${scannerFacingMode === "environment" ? "trasera" : "frontal"}...`, "info", 2000);
+    await reiniciarCamara();
+}
+
 async function toggleLinterna() {
     const btnLinterna = document.getElementById("btnLinterna");
     if (!scannerStream) return;
-
     try {
         const track = scannerStream.getVideoTracks()[0];
         const caps = track.getCapabilities ? track.getCapabilities() : {};
-        if (!caps.torch) {
-            mostrarToast("Este dispositivo no soporta linterna.", "warning");
-            return;
-        }
+        if (!caps.torch) { mostrarToast("Este dispositivo no soporta linterna.", "warning"); return; }
         const actual = track.getSettings ? (track.getSettings().torch || false) : false;
         await track.applyConstraints({ advanced: [{ torch: !actual }] });
-        btnLinterna.classList.toggle("flash-on", !actual);
+        if (btnLinterna) btnLinterna.classList.toggle("flash-on", !actual);
     } catch (e) {
         console.warn("[linterna]", e);
         mostrarToast("No se pudo activar la linterna.", "warning");
@@ -2396,14 +2879,8 @@ async function toggleLinterna() {
 function usarCodigoManual() {
     const input = document.getElementById("scannerManualInput");
     const codigo = input ? input.value.trim() : "";
-    if (!codigo) {
-        mostrarToast("Ingresa un código válido.", "warning");
-        return;
-    }
-    cerrarEscanerCodigoBarras();
-    const inputCod = document.getElementById("inCod");
-    if (inputCod) inputCod.value = codigo;
-    buscarPorCodigo();
+    if (!codigo) { mostrarToast("Ingresa un código válido.", "warning"); return; }
+    manejarCodigoDetectado(codigo, "manual");
 }
 
 function cerrarEscanerCodigoBarras() {
@@ -2411,6 +2888,7 @@ function cerrarEscanerCodigoBarras() {
     if (modal) modal.style.display = "none";
 
     scannerActivo = false;
+    detenerEscaneoAuto();
 
     if (scannerStream) {
         scannerStream.getTracks().forEach(track => track.stop());
@@ -2418,39 +2896,18 @@ function cerrarEscanerCodigoBarras() {
     }
 
     const video = document.getElementById("scannerVideo");
-    if (video) video.srcObject = null;
+    if (video) { video.srcObject = null; video.pause && video.pause(); }
 
-    const videoWrapper = document.getElementById("scannerVideoWrapper");
-    if (videoWrapper) videoWrapper.classList.remove("snapshot-mode");
-
-    const snapshot = document.getElementById("scannerSnapshot");
-    if (snapshot) {
-        const ctx = snapshot.getContext("2d");
-        if (ctx) ctx.clearRect(0, 0, snapshot.width, snapshot.height);
-        snapshot.style.display = "none";
-    }
-
-    const statusEl = document.getElementById("scannerStatus");
-    if (statusEl) {
-        statusEl.className = "scanner-status";
-        statusEl.innerHTML = '<span>⏳ Iniciando cámara...</span>';
-    }
+    reiniciarEstadoVisualScanner();
 
     const manualInput = document.getElementById("scannerManualInput");
     if (manualInput) manualInput.value = "";
 
-    const btnCapturar = document.getElementById("btnCapturar");
-    if (btnCapturar) {
-        btnCapturar.style.display = "inline-flex";
-        btnCapturar.disabled = true;
-    }
-    const btnReintentar = document.getElementById("btnReintentar");
-    if (btnReintentar) btnReintentar.style.display = "none";
-    const btnLinterna = document.getElementById("btnLinterna");
-    if (btnLinterna) {
-        btnLinterna.style.display = "none";
-        btnLinterna.classList.remove("flash-on");
-    }
+    const previewWrapper = document.getElementById("scannerFilePreviewWrapper");
+    if (previewWrapper) previewWrapper.style.display = "none";
+
+    const fileInput = document.getElementById("scannerFileInput");
+    if (fileInput) fileInput.value = "";
 }
 
 // Cerrar con ESC
