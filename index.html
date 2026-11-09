@@ -2312,6 +2312,10 @@ let scannerLoopTimeout = null;
 let scannerFacingMode = "environment";
 let scannerUltimoCodigo = "";
 let scannerUltimoTimestamp = 0;
+let scannerDecodeBusy = false;
+let scannerBarcodeDetector = null;
+let scannerBarcodeDetectorPromise = null;
+let scannerFramesSinLectura = 0;
 
 // Hints para ZXing: prioriza CODE_128 y formatos lineales comunes
 function construirHintsZXing() {
@@ -2409,6 +2413,8 @@ async function abrirEscanerCodigoBarras() {
     scannerEscaneoAuto = false;
     scannerUltimoCodigo = "";
     scannerUltimoTimestamp = 0;
+    scannerFramesSinLectura = 0;
+    scannerDecodeBusy = false;
 
     // Verificar soporte de cámara
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -2570,41 +2576,106 @@ function programarSiguienteEscaneo() {
     scannerLoopTimeout = setTimeout(escanearFrameActual, 350);
 }
 
+async function obtenerBarcodeDetectorNativo() {
+    if (!("BarcodeDetector" in window)) return null;
+    if (!scannerBarcodeDetectorPromise) {
+        scannerBarcodeDetectorPromise = (async () => {
+            try {
+                const formatos = await window.BarcodeDetector.getSupportedFormats();
+                const preferidos = ["code_128", "code_39", "code_93", "codabar", "itf", "ean_13", "ean_8", "upc_a", "upc_e", "qr_code", "data_matrix", "pdf417", "aztec"];
+                const disponibles = preferidos.filter(f => formatos.includes(f));
+                scannerBarcodeDetector = new window.BarcodeDetector(disponibles.length ? { formats: disponibles } : undefined);
+                return scannerBarcodeDetector;
+            } catch (e) {
+                console.warn("BarcodeDetector nativo no disponible; se usará ZXing.", e);
+                return null;
+            }
+        })();
+    }
+    return scannerBarcodeDetectorPromise;
+}
+
 async function escanearFrameActual() {
-    if (!scannerEscaneoAuto || !scannerActivo) return;
-
-    const video = document.getElementById("scannerVideo");
-    const reader = obtenerReaderZXing();
-    if (!video || !reader || video.readyState < 2) {
-        programarSiguienteEscaneo();
-        return;
-    }
-
-    const w = video.videoWidth;
-    const h = video.videoHeight;
-    if (!w || !h) { programarSiguienteEscaneo(); return; }
-
-    // Canvas offscreen para no interferir con el snapshot visible
-    if (!window.__scannerOffscreenCanvas) {
-        window.__scannerOffscreenCanvas = document.createElement("canvas");
-    }
-    const canvas = window.__scannerOffscreenCanvas;
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0, w, h);
+    if (!scannerEscaneoAuto || !scannerActivo || scannerDecodeBusy) return;
+    scannerDecodeBusy = true;
 
     try {
-        const luminances = reader.decodeFromCanvas(canvas);
-        if (luminances && luminances.getText && luminances.getText()) {
-            manejarCodigoDetectado(luminances.getText(), "cámara");
-            return; // éxito → no programar siguiente
+        const video = document.getElementById("scannerVideo");
+        if (!video || video.readyState < 2) return;
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        if (!w || !h) return;
+
+        if (!window.__scannerOffscreenCanvas) window.__scannerOffscreenCanvas = document.createElement("canvas");
+        const canvas = window.__scannerOffscreenCanvas;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(video, 0, 0, w, h);
+
+        // 1) Intentar primero el detector nativo del navegador cuando exista.
+        const detector = await obtenerBarcodeDetectorNativo();
+        if (detector) {
+            try {
+                const codigos = await detector.detect(canvas);
+                if (codigos && codigos.length && codigos[0].rawValue) {
+                    manejarCodigoDetectado(codigos[0].rawValue, "cámara");
+                    return;
+                }
+            } catch (e) {
+                console.debug("Detector nativo: frame sin lectura.", e);
+            }
+        }
+
+        // 2) Respaldo ZXing: imagen completa y luego recorte central ampliado.
+        const reader = obtenerReaderZXing();
+        if (!reader) {
+            const status = document.getElementById("scannerStatus");
+            if (status) status.textContent = "No se pudo cargar el motor de lectura. Recarga la página o usa Subir archivo.";
+            detenerEscaneoAuto();
+            return;
+        }
+
+        const intentarZXing = (lienzo) => {
+            try {
+                const resultado = reader.decodeFromCanvas(lienzo);
+                return resultado && resultado.getText ? resultado.getText() : "";
+            } catch (e) {
+                // NotFoundException es normal cuando el frame todavía no contiene un código legible.
+                return "";
+            }
+        };
+
+        let codigo = intentarZXing(canvas);
+        if (!codigo) {
+            if (!window.__scannerZoomCanvas) window.__scannerZoomCanvas = document.createElement("canvas");
+            const zoom = window.__scannerZoomCanvas;
+            const sw = Math.floor(w * 0.88);
+            const sh = Math.floor(h * 0.62);
+            const sx = Math.floor((w - sw) / 2);
+            const sy = Math.floor((h - sh) / 2);
+            zoom.width = Math.min(1920, sw * 2);
+            zoom.height = Math.min(1080, sh * 2);
+            zoom.getContext("2d", { willReadFrequently: true }).drawImage(video, sx, sy, sw, sh, 0, 0, zoom.width, zoom.height);
+            codigo = intentarZXing(zoom);
+        }
+
+        if (codigo) {
+            manejarCodigoDetectado(codigo, "cámara");
+            return;
+        }
+
+        scannerFramesSinLectura++;
+        if (scannerFramesSinLectura % 18 === 0) {
+            const status = document.getElementById("scannerStatus");
+            if (status) status.textContent = "Aún no se lee el código. Acércalo, evita reflejos y alinea las barras dentro del recuadro.";
         }
     } catch (e) {
-        // No se detectó código, continuar
+        console.error("Error durante la lectura del código:", e);
+    } finally {
+        scannerDecodeBusy = false;
+        if (scannerEscaneoAuto && scannerActivo) programarSiguienteEscaneo();
     }
-
-    programarSiguienteEscaneo();
 }
 
 function manejarCodigoDetectado(codigoRaw, origen) {
