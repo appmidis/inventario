@@ -1491,7 +1491,7 @@
     <main class="main-content" id="mainContent">
         <header class="header">
             <div class="header-title">
-                <h1>GESTIÓN PATRIMONIAL TIC - MIDIS <span style="font-size:10px; color:var(--accent); font-weight:700; background:var(--accent-soft); padding:2px 8px; border-radius:12px; margin-left:6px;">v2.1.0</span></h1>
+                <h1>GESTIÓN PATRIMONIAL TIC - MIDIS <span style="font-size:10px; color:var(--accent); font-weight:700; background:var(--accent-soft); padding:2px 8px; border-radius:12px; margin-left:6px;">v2.5</span></h1>
                 <p>Inventario 2026: Control de Bienes, Reportes Jerárquicos y Emisión de Actas</p>
             </div>
             <div class="header-actions">
@@ -2057,7 +2057,7 @@
 /* =========================================================
    CONFIGURACIÓN GLOBAL
 ========================================================= */
-const VERSION_APP = "2.1.0";
+const VERSION_APP = "2.5";
 
 const CONFIG = Object.freeze({
     urlScript: "https://script.google.com/macros/s/AKfycbw-0C2zKOvIePIlN2f_Qi815-tGZqN3Uq_8VDWFtoWWYBFHS17_KQnDTM94keRUcLE/exec",
@@ -2831,130 +2831,153 @@ async function manejarDropArchivo(ev) {
 
 async function procesarArchivoImagen(file) {
     if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-        mostrarToast("El archivo debe ser una imagen.", "error");
-        return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-        mostrarToast("La imagen es demasiado grande (máx. 10 MB).", "error");
-        return;
-    }
+    const nombreArchivo = (file.name || "").toLowerCase();
+    const esImagen = (file.type && file.type.startsWith("image/")) || /\.(jpe?g|png|webp|bmp|gif|tiff?)$/i.test(nombreArchivo);
+    if (!esImagen) { mostrarToast("Selecciona un archivo de imagen válido (JPG, PNG, WEBP o BMP).", "error"); return; }
+    if (file.size > 10 * 1024 * 1024) { mostrarToast("La imagen es demasiado grande (máx. 10 MB).", "error"); return; }
 
     const statusEl = document.getElementById("scannerStatus");
-    if (statusEl) {
-        statusEl.className = "scanner-status scanning";
-        statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Analizando imagen...';
-    }
-
-    // ⚠️ IMPORTANTE: Usamos BrowserMultiFormatReader con hints específicos para imágenes
+    const actualizarEstado = (clase, mensaje) => {
+        if (statusEl) { statusEl.className = `scanner-status ${clase}`; statusEl.textContent = mensaje; }
+    };
+    actualizarEstado("scanning", "Analizando imagen y buscando códigos compatibles...");
     if (typeof ZXing === "undefined" || window.__ZXING_FAILED__) {
-        mostrarToast("Librería de escaneo no disponible.", "error");
-        return;
+        actualizarEstado("error", "No se pudo cargar el motor de lectura. Recarga la página e inténtalo nuevamente.");
+        mostrarToast("Librería de escaneo no disponible.", "error"); return;
     }
 
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true); // Fuerza a ZXing a esforzarse más
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.CODE_39,
-        ZXing.BarcodeFormat.CODE_93,
-        ZXing.BarcodeFormat.EAN_13,
-        ZXing.BarcodeFormat.EAN_8,
-        ZXing.BarcodeFormat.QR_CODE
-    ]);
-    
-    // Creamos un lector exclusivo para imágenes
-    const reader = new ZXing.BrowserMultiFormatReader(hints, 500);
-
+    let reader = null, objectUrl = null;
     try {
-        // 1. Leer archivo como dataURL
-        const dataURL = await new Promise((resolve, reject) => {
-            const fr = new FileReader();
-            fr.onload = () => resolve(fr.result);
-            fr.onerror = reject;
-            fr.readAsDataURL(file);
-        });
-
-        // 2. Cargar imagen
+        // URL temporal: evita convertir la imagen a Base64 y reduce uso de memoria.
+        objectUrl = URL.createObjectURL(file);
         const img = await new Promise((resolve, reject) => {
-            const i = new Image();
-            i.onload = () => resolve(i);
-            i.onerror = reject;
-            i.src = dataURL;
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = () => reject(new Error("No se pudo abrir la imagen seleccionada."));
+            image.src = objectUrl;
         });
+        if (!img.naturalWidth || !img.naturalHeight) throw new Error("La imagen no tiene dimensiones válidas.");
 
-        // 3. Mostrar preview
         const previewCanvas = document.getElementById("scannerFilePreviewCanvas");
         const previewWrapper = document.getElementById("scannerFilePreviewWrapper");
         if (previewCanvas && previewWrapper) {
-            const maxW = 480;
-            const ratio = Math.min(1, maxW / img.width);
-            previewCanvas.width = img.width * ratio;
-            previewCanvas.height = img.height * ratio;
+            const ratio = Math.min(1, 480 / img.naturalWidth);
+            previewCanvas.width = Math.max(1, Math.round(img.naturalWidth * ratio));
+            previewCanvas.height = Math.max(1, Math.round(img.naturalHeight * ratio));
             const pctx = previewCanvas.getContext("2d");
+            pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
             pctx.drawImage(img, 0, 0, previewCanvas.width, previewCanvas.height);
             previewWrapper.style.display = "block";
         }
 
-        // 4. Preparar lienzo para procesamiento
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        // El lector de archivos ahora reconoce UPC-A/UPC-E además de EAN y códigos lineales.
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+            ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+            ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+            ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.ITF,
+            ZXing.BarcodeFormat.CODABAR, ZXing.BarcodeFormat.QR_CODE,
+            ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.PDF_417
+        ].filter(f => f !== undefined));
+        reader = new ZXing.BrowserMultiFormatReader(hints);
 
-        // INTENTO 1: Lectura directa de la imagen original
-        ctx.drawImage(img, 0, 0);
-        let codigo = await intentarDecodificar(reader, canvas);
+        // Reducir imágenes gigantes sin perder detalle excesivo.
+        const maxSide = 2800;
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        const baseW = Math.max(1, Math.round(img.naturalWidth * scale));
+        const baseH = Math.max(1, Math.round(img.naturalHeight * scale));
+        const baseCanvas = document.createElement("canvas");
+        baseCanvas.width = baseW; baseCanvas.height = baseH;
+        const baseCtx = baseCanvas.getContext("2d", { willReadFrequently: true });
+        if (!baseCtx) throw new Error("El navegador no pudo preparar la imagen para analizarla.");
+        baseCtx.drawImage(img, 0, 0, baseW, baseH);
 
-        // INTENTO 2: Si falla, aplicar filtro de escala de grises y alto contraste
-        if (!codigo) {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            // Filtro: Blanco y negro puro para resaltar las barras
-            for (let i = 0; i < data.length; i += 4) {
-                const gris = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
-                const valor = gris < 128 ? 0 : 255; // Contraste extremo
-                data[i] = valor;
-                data[i+1] = valor;
-                data[i+2] = valor;
-            }
-            ctx.putImageData(imageData, 0, 0);
-            codigo = await intentarDecodificar(reader, canvas);
+        let codigo = "";
+        // Primero usar BarcodeDetector nativo si el navegador de escritorio lo soporta.
+        if ("BarcodeDetector" in window) {
+            try {
+                const soportados = await window.BarcodeDetector.getSupportedFormats();
+                const preferidos = ["upc_a", "upc_e", "ean_13", "ean_8", "code_128", "code_39", "code_93", "itf", "codabar", "qr_code", "data_matrix", "pdf417"];
+                const formatos = preferidos.filter(f => soportados.includes(f));
+                const detector = new window.BarcodeDetector(formatos.length ? { formats } : undefined);
+                const encontrados = await detector.detect(baseCanvas);
+                if (encontrados && encontrados.length) codigo = encontrados.find(x => x.rawValue)?.rawValue || "";
+            } catch (e) { console.debug("BarcodeDetector no disponible para esta imagen; se usará ZXing.", e); }
         }
 
-        // INTENTO 3: Si aún falla, escalar la imagen al triple (3x) para agrandar el código
-        if (!codigo) {
-            const canvasZoom = document.createElement("canvas");
-            // Escalar 3 veces el tamaño, con un máximo de 3000px para no colapsar
-            const escala = Math.min(3, 3000 / Math.max(img.width, img.height));
-            canvasZoom.width = img.width * escala;
-            canvasZoom.height = img.height * escala;
-            const ctxZoom = canvasZoom.getContext("2d", { willReadFrequently: true });
-            ctxZoom.imageSmoothingEnabled = false; // No suavizar, para mantener las barras nítidas
-            ctxZoom.drawImage(img, 0, 0, canvasZoom.width, canvasZoom.height);
-            codigo = await intentarDecodificar(reader, canvasZoom);
+        const probarCanvas = canvas => {
+            try {
+                const result = reader.decodeFromCanvas(canvas);
+                return result && typeof result.getText === "function" ? result.getText().trim() : "";
+            } catch (e) { return ""; }
+        };
+        if (!codigo) codigo = probarCanvas(baseCanvas);
+
+        // Analizar franjas centrales: en capturas de PC suele haber mucho margen blanco.
+        const recortes = [
+            { x: 0.03, y: 0.20, w: 0.94, h: 0.60 },
+            { x: 0.08, y: 0.30, w: 0.84, h: 0.40 },
+            { x: 0, y: 0, w: 1, h: 1 }
+        ];
+        for (const r of recortes) {
+            if (codigo) break;
+            const crop = document.createElement("canvas");
+            crop.width = Math.max(1, Math.round(baseW * r.w));
+            crop.height = Math.max(1, Math.round(baseH * r.h));
+            crop.getContext("2d", { willReadFrequently: true }).drawImage(baseCanvas,
+                Math.round(baseW * r.x), Math.round(baseH * r.y), crop.width, crop.height,
+                0, 0, crop.width, crop.height);
+            codigo = probarCanvas(crop);
+            if (!codigo) {
+                const zoom = document.createElement("canvas");
+                const factor = Math.min(2.5, 2400 / Math.max(crop.width, crop.height));
+                zoom.width = Math.max(1, Math.round(crop.width * factor));
+                zoom.height = Math.max(1, Math.round(crop.height * factor));
+                const zctx = zoom.getContext("2d", { willReadFrequently: true });
+                zctx.imageSmoothingEnabled = false;
+                zctx.drawImage(crop, 0, 0, zoom.width, zoom.height);
+                codigo = probarCanvas(zoom);
+            }
         }
 
-        if (codigo) {
-            manejarCodigoDetectado(codigo, "archivo");
-        } else {
-            if (statusEl) {
-                statusEl.className = "scanner-status error";
-                statusEl.innerHTML = "❌ No se detectó código. La imagen debe ser nítida y tener buen contraste.";
+        // Probar varios niveles de contraste en vez de un único umbral fijo.
+        if (!codigo) {
+            const work = document.createElement("canvas");
+            work.width = baseW; work.height = baseH;
+            const wctx = work.getContext("2d", { willReadFrequently: true });
+            wctx.drawImage(baseCanvas, 0, 0);
+            const imageData = wctx.getImageData(0, 0, baseW, baseH);
+            const pixels = imageData.data, gray = new Uint8ClampedArray(baseW * baseH);
+            for (let i = 0, j = 0; i < pixels.length; i += 4, j++)
+                gray[j] = Math.round(pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114);
+            for (const threshold of [100, 128, 155, 180]) {
+                for (let j = 0, i = 0; j < gray.length; j++, i += 4) {
+                    const v = gray[j] < threshold ? 0 : 255;
+                    pixels[i] = pixels[i + 1] = pixels[i + 2] = v; pixels[i + 3] = 255;
+                }
+                wctx.putImageData(imageData, 0, 0);
+                codigo = probarCanvas(work);
+                if (codigo) break;
             }
-            mostrarToast("No se detectó ningún código. Intenta con una imagen de mayor calidad.", "warning", 5000);
+        }
+
+        if (codigo) manejarCodigoDetectado(codigo, "archivo");
+        else {
+            actualizarEstado("error", "No se pudo reconocer el código. Prueba con una imagen más nítida o con el código más grande.");
+            mostrarToast("No se detectó ningún código. Se probaron formatos UPC, EAN, Code 128 y otros formatos comunes.", "warning", 5000);
         }
     } catch (err) {
         console.error("[procesarArchivoImagen]", err);
-        if (statusEl) {
-            statusEl.className = "scanner-status error";
-            statusEl.innerHTML = "❌ Error al procesar la imagen.";
-        }
+        actualizarEstado("error", err && err.message ? err.message : "Error al procesar la imagen.");
+        mostrarToast("No se pudo procesar la imagen seleccionada.", "error");
     } finally {
-        if (reader) {
-            reader.reset();
-        }
+        if (reader) { try { reader.reset(); } catch (e) {} }
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        // Permite volver a seleccionar el mismo archivo después de un intento fallido.
+        const inputArchivo = document.getElementById("scannerFileInput");
+        if (inputArchivo) inputArchivo.value = "";
     }
 }
 
@@ -3377,13 +3400,90 @@ function actualizarFechaYFirmaActa() {
         fechaEl.textContent = fechaCapitalizada;
     }
 
+    // v2.5: refrescar firmantes según usuario logueado + servidor seleccionado
+    refrescarFirmantesActa();
+}
+
+/* =========================================================
+   v2.5 — DATOS DEL USUARIO LOGUEADO (para actas)
+========================================================= */
+function obtenerDatosUsuarioLogueado() {
+    // Prioridad: sesión activa → CONFIG.ogti como fallback
+    if (sessionUser && sessionUser.nombre) {
+        return {
+            nombre: String(sessionUser.nombre).trim().toUpperCase(),
+            dni: String(sessionUser.dni || "").trim(),
+            usuario: String(sessionUser.usuario || "").trim()
+        };
+    }
+    return {
+        nombre: CONFIG.ogti.nombre,
+        dni: CONFIG.ogti.dni,
+        usuario: "sistema"
+    };
+}
+
+/**
+ * Refresca TODOS los campos del acta relacionados al usuario logueado.
+ * - Si modo = ENTREGA: usuario logueado firma como "ENTREGUÉ CONFORME" (izq)
+ * - Si modo = RECEPCION: usuario logueado firma como "RECIBÍ CONFORME" (der)
+ * - El servidor seleccionado ocupa el lado contrario.
+ * NO sobrescribe nombres editados manualmente por el usuario en contenteditable.
+ */
+function refrescarFirmantesActa() {
+    const datosUsuario = obtenerDatosUsuarioLogueado();
+
+    // El servidor seleccionado (si existe)
+    const selServ = document.getElementById("m3Servidor");
+    let servidorNom = "";
+    let servidorDni = "";
+    if (selServ && selServ.value) {
+        servidorNom = selServ.value;
+        servidorDni = (selServ.options[selServ.selectedIndex]?.dataset?.dni) || "";
+    }
+
+    const sigTituloIzq = document.getElementById("sigTituloIzq");
     const sigNomIzq = document.getElementById("sigNomIzq");
     const sigDniIzq = document.getElementById("sigDniIzq");
-    if (sigNomIzq && sigDniIzq && sessionUser) {
-        sigNomIzq.textContent = sessionUser.nombre || CONFIG.ogti.nombre;
-        sigDniIzq.textContent = sessionUser.dni || CONFIG.ogti.dni;
+    const sigTituloDer = document.getElementById("sigTituloDer");
+    const sigNomDer = document.getElementById("sigNomDer");
+    const sigDniDer = document.getElementById("sigDniDer");
+
+    if (modoActaActual === "ENTREGA") {
+        // Usuario logueado entrega (izq) → servidor recibe (der)
+        if (sigTituloIzq) sigTituloIzq.textContent = "ENTREGUÉ CONFORME";
+        if (sigNomIzq) sigNomIzq.textContent = datosUsuario.nombre;
+        if (sigDniIzq) sigDniIzq.textContent = datosUsuario.dni || "S/DNI";
+
+        if (sigTituloDer) sigTituloDer.textContent = "RECIBÍ CONFORME";
+        if (sigNomDer) sigNomDer.textContent = servidorNom || "S/DATO";
+        if (sigDniDer) sigDniDer.textContent = servidorDni || "S/DNI";
+    } else {
+        // RECEPCION: servidor entrega (izq) → usuario logueado recibe (der)
+        if (sigTituloIzq) sigTituloIzq.textContent = "ENTREGUÉ CONFORME";
+        if (sigNomIzq) sigNomIzq.textContent = servidorNom || "S/DATO";
+        if (sigDniIzq) sigDniIzq.textContent = servidorDni || "S/DNI";
+
+        if (sigTituloDer) sigTituloDer.textContent = "RECIBÍ CONFORME";
+        if (sigNomDer) sigNomDer.textContent = datosUsuario.nombre;
+        if (sigDniDer) sigDniDer.textContent = datosUsuario.dni || "S/DNI";
+    }
+
+    // También actualizar el párrafo del cuerpo del acta con el servidor (si hay)
+    if (servidorNom) {
+        const actaServidorNom = document.getElementById("actaServidorNom");
+        if (actaServidorNom) actaServidorNom.textContent = servidorNom;
+    }
+    if (selServ && selServ.value) {
+        const ger = document.getElementById("m3Gerencia")?.value || "";
+        const area = document.getElementById("m3Area")?.value || "";
+        const sub = document.getElementById("m3SubArea")?.value || "";
+        const areaTexto = sub || area || ger || "OFICINA GENERAL DE TECNOLOGÍAS DE LA INFORMACIÓN";
+        const actaServidorArea = document.getElementById("actaServidorArea");
+        if (actaServidorArea) actaServidorArea.textContent = areaTexto;
     }
 }
+
 
 function abrirModalCambiarPass(obligatorio = false) {
     if (!sessionToken) { mostrarToast("Debes iniciar sesión primero.", "warning"); return; }
@@ -3774,6 +3874,11 @@ function cambiarModulo(id, btn) {
     if (window.innerWidth <= 900) {
         document.getElementById('sidebar').classList.remove('open');
     }
+
+    // v2.5: al entrar al módulo ACTA, refrescar firmantes con el usuario logueado
+    if (id === "modulo-acta") {
+        actualizarFechaYFirmaActa();
+    }
 }
 
 function cambiarSubTab(id, btn) {
@@ -3799,6 +3904,11 @@ function cambiarSubTabM3(panelId, btn) {
     if (panelId === "actaHistorialPanel") {
         inicializarFiltrosHistorial();
         renderizarHistorialActas();
+    }
+
+    // v2.5: al volver a emisión, refrescar firmantes con usuario logueado
+    if (panelId === "actaEmisionPanel") {
+        actualizarFechaYFirmaActa();
     }
 }
 
@@ -4693,28 +4803,21 @@ function m3CambioSubArea() {
 async function m3SeleccionarServidor() {
     const sel = document.getElementById("m3Servidor");
     const nom = sel.value;
-    if (!nom) return;
+    if (!nom) {
+        // Si se deselecciona, refrescar firmantes para que OGTI quede solo
+        refrescarFirmantesActa();
+        return;
+    }
 
     const tbody = document.getElementById("actaTableBody");
     if (tbody.rows.length > 0) {
         const ok = await confirmar("Cambiar de servidor limpiará la tabla del acta. ¿Continuar?", "⚠️ Cambio de servidor");
-        if (!ok) { sel.value = ""; return; }
+        if (!ok) { sel.value = ""; refrescarFirmantesActa(); return; }
         tbody.innerHTML = "";
     }
 
-    const dni = sel.options[sel.selectedIndex].dataset.dni || "";
-    const area = document.getElementById("m3Area").value || document.getElementById("m3Gerencia").value || "OFICINA GENERAL DE TECNOLOGÍAS DE LA INFORMACIÓN";
-
-    document.getElementById("actaServidorNom").textContent = nom;
-    document.getElementById("actaServidorArea").textContent = area;
-
-    if (modoActaActual === "ENTREGA") {
-        document.getElementById("sigNomDer").textContent = nom;
-        document.getElementById("sigDniDer").textContent = dni;
-    } else {
-        document.getElementById("sigNomIzq").textContent = nom;
-        document.getElementById("sigDniIzq").textContent = dni;
-    }
+    // v2.5: refrescarFirmantesActa() se encarga de todo (usuario logueado + servidor)
+    refrescarFirmantesActa();
 }
 
 async function m3AgregarBienAlActa() {
@@ -4810,27 +4913,8 @@ function alternarModoActa(modo) {
     document.getElementById("boxRecepcion").innerText = modo === "RECEPCION" ? "X" : "";
     document.getElementById("actaAccionTxt").innerText = modo === "ENTREGA" ? "ENTREGA" : "RECEPCIÓN";
 
-    const ogtiNom = CONFIG.ogti.nombre;
-    const ogtiDni = CONFIG.ogti.dni;
-    const selServ = document.getElementById("m3Servidor");
-    const servNom = selServ.value || document.getElementById("sigNomDer").textContent;
-    const servDni = (selServ.options[selServ.selectedIndex] && selServ.options[selServ.selectedIndex].dataset.dni) || document.getElementById("sigDniDer").textContent;
-
-    if (modo === "ENTREGA") {
-        document.getElementById("sigTituloIzq").textContent = "ENTREGUÉ CONFORME";
-        document.getElementById("sigTituloDer").textContent = "RECIBÍ CONFORME";
-        document.getElementById("sigNomIzq").textContent = ogtiNom;
-        document.getElementById("sigDniIzq").textContent = ogtiDni;
-        document.getElementById("sigNomDer").textContent = servNom;
-        document.getElementById("sigDniDer").textContent = servDni;
-    } else {
-        document.getElementById("sigTituloIzq").textContent = "RECIBÍ CONFORME";
-        document.getElementById("sigTituloDer").textContent = "ENTREGUÉ CONFORME";
-        document.getElementById("sigNomIzq").textContent = servNom;
-        document.getElementById("sigDniIzq").textContent = servDni;
-        document.getElementById("sigNomDer").textContent = ogtiNom;
-        document.getElementById("sigDniDer").textContent = ogtiDni;
-    }
+    // v2.5: usa el usuario LOGUEADO real (no CONFIG.ogti hardcoded)
+    refrescarFirmantesActa();
 }
 
 async function confirmarLimpiarActa() {
@@ -4853,6 +4937,9 @@ async function registrarMovimientoHistorial() {
         const subArea = document.getElementById("m3SubArea").value || "";
         const tipoMovimiento = modoActaActual === "ENTREGA" ? "ENTREGA" : "DEVOLUCION";
 
+                // v2.5: capturar datos del usuario logueado para trazabilidad completa
+        const datosUsuarioLogueado = obtenerDatosUsuarioLogueado();
+
         const entregaNom = (modoActaActual === "ENTREGA")
             ? document.getElementById("sigNomIzq").textContent.trim()
             : document.getElementById("sigNomDer").textContent.trim();
@@ -4866,6 +4953,11 @@ async function registrarMovimientoHistorial() {
         const recibeDni = (modoActaActual === "ENTREGA")
             ? document.getElementById("sigDniDer").textContent.trim()
             : document.getElementById("sigDniIzq").textContent.trim();
+
+        // Nombre canónico del usuario logueado (para el acta histórica)
+        const usuarioLogueadoNom = datosUsuarioLogueado.nombre;
+        const usuarioLogueadoDni = datosUsuarioLogueado.dni;
+        const usuarioLogueadoUser = datosUsuarioLogueado.usuario;
 
         const fechaTexto = document.getElementById("actaFecha").textContent.trim() || new Date().toLocaleDateString("es-PE");
         const ahora = new Date().toISOString();
@@ -4896,7 +4988,7 @@ async function registrarMovimientoHistorial() {
         });
 
         Object.keys(porTipo).forEach(tipoEquipo => {
-            const reg = {
+                const reg = {
                 id: "mov_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
                 fecha: ahora,
                 fechaTexto: fechaTexto,
@@ -4913,7 +5005,11 @@ async function registrarMovimientoHistorial() {
                 codigos: porTipo[tipoEquipo].codigos.join(", "),
                 series: porTipo[tipoEquipo].series.join(", "),
                 observacion: porTipo[tipoEquipo].observaciones.join(" | "),
-                usuarioRegistro: sessionUser ? sessionUser.nombre : "Sistema"
+                usuarioRegistro: usuarioLogueadoNom || "Sistema",
+                // v2.5: datos explícitos del usuario logueado (para acta histórica)
+                usuarioRegistroNombre: usuarioLogueadoNom,
+                usuarioRegistroDni: usuarioLogueadoDni,
+                usuarioRegistroUser: usuarioLogueadoUser
             };
             
             historialActas.push(reg);
@@ -5210,22 +5306,32 @@ function mostrarActaDesdeHistorial(registro) {
     const sigDniDer = clon.querySelector("#sigDniDer");
     const sigTituloDer = clon.querySelector("#sigTituloDer");
 
+        // v2.5: usar datos del usuario REGISTRADOR guardados en el historial
+    const ogtiNomHistorico = registro.usuarioRegistroNombre
+        || registro.quienEntrega
+        || registro.quienRecibe
+        || CONFIG.ogti.nombre;
+    const ogtiDniHistorico = registro.usuarioRegistroDni
+        || registro.quienEntregaDni
+        || registro.quienRecibeDni
+        || CONFIG.ogti.dni;
+
     if (esEntrega) {
-        // OGTI entrega → servidor recibe
+        // OGTI (usuario logueado al momento de registrar) entrega → servidor recibe
         if (sigTituloIzq) sigTituloIzq.textContent = "ENTREGUÉ CONFORME";
-        if (sigNomIzq) sigNomIzq.textContent = registro.quienEntrega || CONFIG.ogti.nombre;
-        if (sigDniIzq) sigDniIzq.textContent = registro.quienEntregaDni || CONFIG.ogti.dni;
+        if (sigNomIzq) sigNomIzq.textContent = registro.quienEntrega || ogtiNomHistorico;
+        if (sigDniIzq) sigDniIzq.textContent = registro.quienEntregaDni || ogtiDniHistorico;
         if (sigTituloDer) sigTituloDer.textContent = "RECIBÍ CONFORME";
         if (sigNomDer) sigNomDer.textContent = registro.quienRecibe || "S/DATO";
         if (sigDniDer) sigDniDer.textContent = registro.quienRecibeDni || "S/DNI";
     } else {
-        // Servidor entrega (devuelve) → OGTI recibe
+        // Servidor entrega (devuelve) → OGTI (usuario logueado) recibe
         if (sigTituloIzq) sigTituloIzq.textContent = "ENTREGUÉ CONFORME";
         if (sigNomIzq) sigNomIzq.textContent = registro.quienEntrega || "S/DATO";
         if (sigDniIzq) sigDniIzq.textContent = registro.quienEntregaDni || "S/DNI";
         if (sigTituloDer) sigTituloDer.textContent = "RECIBÍ CONFORME";
-        if (sigNomDer) sigNomDer.textContent = registro.quienRecibe || CONFIG.ogti.nombre;
-        if (sigDniDer) sigDniDer.textContent = registro.quienRecibeDni || CONFIG.ogti.dni;
+        if (sigNomDer) sigNomDer.textContent = registro.quienRecibe || ogtiNomHistorico;
+        if (sigDniDer) sigDniDer.textContent = registro.quienRecibeDni || ogtiDniHistorico;
     }
 
     // Quitar contenteditable de las firmas (es solo vista, no edición)
