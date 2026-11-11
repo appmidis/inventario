@@ -2844,31 +2844,41 @@ async function procesarArchivoImagen(file) {
     const statusEl = document.getElementById("scannerStatus");
     if (statusEl) {
         statusEl.className = "scanner-status scanning";
-        statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Analizando imagen...';
+        statusEl.innerHTML = '<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Analizando imagen (esto puede tardar unos segundos)...';
     }
 
-    // ⚠️ IMPORTANTE: Usamos BrowserMultiFormatReader con hints específicos para imágenes
     if (typeof ZXing === "undefined" || window.__ZXING_FAILED__) {
         mostrarToast("Librería de escaneo no disponible.", "error");
         return;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // HINTS AMPLIADOS: incluye TODOS los formatos lineales + 2D
+    // ═══════════════════════════════════════════════════════════════
     const hints = new Map();
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true); // Fuerza a ZXing a esforzarse más
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    hints.set(ZXing.DecodeHintType.PURE_BARCODE, false);
+    hints.set(ZXing.DecodeHintType.ALSO_INVERTED, true);
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.CODE_39,
+        ZXing.BarcodeFormat.CODE_128,   // ← MÁS COMÚN en SBN
+        ZXing.BarcodeFormat.CODE_39,    // ← MÁS COMÚN en SBN
         ZXing.BarcodeFormat.CODE_93,
+        ZXing.BarcodeFormat.CODABAR,
+        ZXing.BarcodeFormat.ITF,        // ← ¡FALTABA! (Interleaved 2 of 5, muy común en patrimonio)
         ZXing.BarcodeFormat.EAN_13,
         ZXing.BarcodeFormat.EAN_8,
-        ZXing.BarcodeFormat.QR_CODE
+        ZXing.BarcodeFormat.UPC_A,
+        ZXing.BarcodeFormat.UPC_E,
+        ZXing.BarcodeFormat.QR_CODE,
+        ZXing.BarcodeFormat.DATA_MATRIX,
+        ZXing.BarcodeFormat.PDF_417,
+        ZXing.BarcodeFormat.AZTEC
     ]);
-    
-    // Creamos un lector exclusivo para imágenes
-    const reader = new ZXing.BrowserMultiFormatReader(hints, 500);
+
+    const reader = new ZXing.BrowserMultiFormatReader(hints, 800);
 
     try {
-        // 1. Leer archivo como dataURL
+        // 1. Cargar imagen
         const dataURL = await new Promise((resolve, reject) => {
             const fr = new FileReader();
             fr.onload = () => resolve(fr.result);
@@ -2876,7 +2886,6 @@ async function procesarArchivoImagen(file) {
             fr.readAsDataURL(file);
         });
 
-        // 2. Cargar imagen
         const img = await new Promise((resolve, reject) => {
             const i = new Image();
             i.onload = () => resolve(i);
@@ -2884,7 +2893,7 @@ async function procesarArchivoImagen(file) {
             i.src = dataURL;
         });
 
-        // 3. Mostrar preview
+        // 2. Mostrar preview
         const previewCanvas = document.getElementById("scannerFilePreviewCanvas");
         const previewWrapper = document.getElementById("scannerFilePreviewWrapper");
         if (previewCanvas && previewWrapper) {
@@ -2897,53 +2906,223 @@ async function procesarArchivoImagen(file) {
             previewWrapper.style.display = "block";
         }
 
-        // 4. Preparar lienzo para procesamiento
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        // ═══════════════════════════════════════════════════════════════
+        // PIPELINE DE PREPROCESAMIENTO EN CASCADA
+        // Se prueba cada variante hasta que una funcione
+        // ═══════════════════════════════════════════════════════════════
+        const baseW = img.width;
+        const baseH = img.height;
 
-        // INTENTO 1: Lectura directa de la imagen original
-        ctx.drawImage(img, 0, 0);
-        let codigo = await intentarDecodificar(reader, canvas);
+        // Calcular escala objetivo: barras de código 1D necesitan al menos
+        // 2 píxeles por módulo. Para una imagen 800x600 con código de 40mm,
+        // con ~40 módulos = 20 px/módulo, lo cual es suficiente.
+        // Si la imagen es pequeña (<800px ancho), escalar a 1200.
+        const escalaBase = Math.max(1, Math.min(3, 1200 / baseW));
 
-        // INTENTO 2: Si falla, aplicar filtro de escala de grises y alto contraste
-        if (!codigo) {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            // Filtro: Blanco y negro puro para resaltar las barras
-            for (let i = 0; i < data.length; i += 4) {
-                const gris = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
-                const valor = gris < 128 ? 0 : 255; // Contraste extremo
-                data[i] = valor;
-                data[i+1] = valor;
-                data[i+2] = valor;
+        const variantes = [];
+
+        // VARIANTE 1: Imagen original a escala calculada
+        variantes.push({
+            nombre: "original",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                c.width = Math.round(baseW * escalaBase);
+                c.height = Math.round(baseH * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+                return c;
             }
-            ctx.putImageData(imageData, 0, 0);
-            codigo = await intentarDecodificar(reader, canvas);
-        }
+        });
 
-        // INTENTO 3: Si aún falla, escalar la imagen al triple (3x) para agrandar el código
-        if (!codigo) {
-            const canvasZoom = document.createElement("canvas");
-            // Escalar 3 veces el tamaño, con un máximo de 3000px para no colapsar
-            const escala = Math.min(3, 3000 / Math.max(img.width, img.height));
-            canvasZoom.width = img.width * escala;
-            canvasZoom.height = img.height * escala;
-            const ctxZoom = canvasZoom.getContext("2d", { willReadFrequently: true });
-            ctxZoom.imageSmoothingEnabled = false; // No suavizar, para mantener las barras nítidas
-            ctxZoom.drawImage(img, 0, 0, canvasZoom.width, canvasZoom.height);
-            codigo = await intentarDecodificar(reader, canvasZoom);
+        // VARIANTE 2: Escala de grises + umbral Otsu (adaptativo)
+        variantes.push({
+            nombre: "otsu",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                c.width = Math.round(baseW * escalaBase);
+                c.height = Math.round(baseH * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+                const imageData = ctx.getImageData(0, 0, c.width, c.height);
+                const data = imageData.data;
+                // Convertir a gris
+                for (let i = 0; i < data.length; i += 4) {
+                    const g = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                    data[i] = data[i+1] = data[i+2] = g;
+                }
+                // Calcular umbral Otsu
+                const umbral = calcularOtsu(data);
+                // Aplicar
+                for (let i = 0; i < data.length; i += 4) {
+                    const v = data[i] < umbral ? 0 : 255;
+                    data[i] = data[i+1] = data[i+2] = v;
+                }
+                ctx.putImageData(imageData, 0, 0);
+                return c;
+            }
+        });
+
+        // VARIANTE 3: Escala de grises con contraste aumentado (2x)
+        variantes.push({
+            nombre: "contraste",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                c.width = Math.round(baseW * escalaBase);
+                c.height = Math.round(baseH * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+                const imageData = ctx.getImageData(0, 0, c.width, c.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    let g = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                    // Estirar contraste alrededor de 128
+                    g = (g - 128) * 2 + 128;
+                    g = Math.max(0, Math.min(255, g));
+                    data[i] = data[i+1] = data[i+2] = g;
+                }
+                ctx.putImageData(imageData, 0, 0);
+                return c;
+            }
+        });
+
+        // VARIANTE 4: Invertida (por si el código tiene fondo oscuro)
+        variantes.push({
+            nombre: "invertida",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                c.width = Math.round(baseW * escalaBase);
+                c.height = Math.round(baseH * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+                const imageData = ctx.getImageData(0, 0, c.width, c.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = 255 - data[i];
+                    data[i+1] = 255 - data[i+1];
+                    data[i+2] = 255 - data[i+2];
+                }
+                ctx.putImageData(imageData, 0, 0);
+                return c;
+            }
+        });
+
+        // VARIANTE 5: Solo el 50% central (recortar bordes ruidosos)
+        variantes.push({
+            nombre: "recorte_central",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                const sx = Math.round(baseW * 0.1);
+                const sy = Math.round(baseH * 0.1);
+                const sw = Math.round(baseW * 0.8);
+                const sh = Math.round(baseH * 0.8);
+                c.width = Math.round(sw * escalaBase);
+                c.height = Math.round(sh * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+                return c;
+            }
+        });
+
+        // VARIANTE 6: Rotada 90° (código vertical)
+        variantes.push({
+            nombre: "rotada_90",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                c.width = Math.round(baseH * escalaBase);
+                c.height = Math.round(baseW * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.translate(c.width / 2, c.height / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.drawImage(img, -baseW * escalaBase / 2, -baseH * escalaBase / 2, baseW * escalaBase, baseH * escalaBase);
+                return c;
+            }
+        });
+
+        // VARIANTE 7: Rotada 180°
+        variantes.push({
+            nombre: "rotada_180",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                c.width = Math.round(baseW * escalaBase);
+                c.height = Math.round(baseH * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.translate(c.width, c.height);
+                ctx.rotate(Math.PI);
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+                return c;
+            }
+        });
+
+        // VARIANTE 8: Rotada 270°
+        variantes.push({
+            nombre: "rotada_270",
+            canvas: () => {
+                const c = document.createElement("canvas");
+                c.width = Math.round(baseH * escalaBase);
+                c.height = Math.round(baseW * escalaBase);
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+                ctx.translate(c.width / 2, c.height / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.drawImage(img, -baseW * escalaBase / 2, -baseH * escalaBase / 2, baseW * escalaBase, baseH * escalaBase);
+                return c;
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // INTENTAR DECODIFICAR CON CADA VARIANTE
+        // ═══════════════════════════════════════════════════════════════
+        let codigo = null;
+        let varianteExitosa = null;
+
+        for (let i = 0; i < variantes.length; i++) {
+            const v = variantes[i];
+            if (statusEl) {
+                statusEl.innerHTML = `<span class="spinner" style="border-color:#92400e; border-top-color:transparent;"></span> Probando variante ${i+1}/${variantes.length} (${v.nombre})...`;
+            }
+            // Ceder al navegador para que repinte el estado
+            await new Promise(r => setTimeout(r, 30));
+
+            const canvas = v.canvas();
+            const resultado = intentarDecodificar(reader, canvas);
+            if (resultado) {
+                codigo = resultado;
+                varianteExitosa = v.nombre;
+                break;
+            }
+            // Liberar memoria
+            canvas.width = 0;
+            canvas.height = 0;
         }
 
         if (codigo) {
-            manejarCodigoDetectado(codigo, "archivo");
+            console.log(`✅ Código detectado con variante: ${varianteExitosa}`);
+            manejarCodigoDetectado(codigo, `archivo (${varianteExitosa})`);
         } else {
             if (statusEl) {
                 statusEl.className = "scanner-status error";
-                statusEl.innerHTML = "❌ No se detectó código. La imagen debe ser nítida y tener buen contraste.";
+                statusEl.innerHTML = "❌ No se detectó código tras probar 8 variantes. Revisa la calidad de la imagen.";
             }
-            mostrarToast("No se detectó ningún código. Intenta con una imagen de mayor calidad.", "warning", 5000);
+            mostrarToast(
+                "No se detectó código. Prueba con una foto más nítida, con el código recto y buen contraste.",
+                "warning",
+                6000
+            );
         }
     } catch (err) {
         console.error("[procesarArchivoImagen]", err);
@@ -2958,6 +3137,45 @@ async function procesarArchivoImagen(file) {
     }
 }
 
+/* =========================================================
+   ALGORITMO DE OTSU (umbral adaptativo)
+   Calcula el umbral óptimo para separar fondo de primer plano
+========================================================= */
+function calcularOtsu(grayData) {
+    // grayData: Uint8ClampedArray RGBA (R=G=B)
+    const histograma = new Array(256).fill(0);
+    const total = grayData.length / 4;
+
+    for (let i = 0; i < grayData.length; i += 4) {
+        histograma[grayData[i]]++;
+    }
+
+    let suma = 0;
+    for (let i = 0; i < 256; i++) suma += i * histograma[i];
+
+    let sumaB = 0;
+    let wB = 0;
+    let maxVarianza = 0;
+    let umbral = 128;
+
+    for (let t = 0; t < 256; t++) {
+        wB += histograma[t];
+        if (wB === 0) continue;
+        const wF = total - wB;
+        if (wF === 0) break;
+
+        sumaB += t * histograma[t];
+        const mB = sumaB / wB;
+        const mF = (suma - sumaB) / wF;
+        const varianza = wB * wF * (mB - mF) * (mB - mF);
+
+        if (varianza > maxVarianza) {
+            maxVarianza = varianza;
+            umbral = t;
+        }
+    }
+    return umbral;
+}
 // Función auxiliar para intentar decodificar un canvas
 function intentarDecodificar(reader, canvas) {
     try {
