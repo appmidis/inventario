@@ -1471,9 +1471,9 @@
                 <span class="label">Acta de Entrega / Recepción</span>
             </button>
             <button class="nav-item" onclick="cambiarModulo('modulo-usuarios', this)" data-modulo="modulo-usuarios" id="navUsuarios" title="Gestión de Usuarios" style="display:none;">
-                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                <span class="label">Gestión de Usuarios</span>
-            </button>					
+			<svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+			<span class="label">Gestión de Usuarios</span>
+			</button>				
         </nav>
         <div class="sidebar-footer">
             <button class="btn btn-amber" onclick="sincronizarDrive(true)" title="Sincronizar desde Drive">
@@ -6110,6 +6110,11 @@ function abrirFormUsuario(username) {
                     <label>Nombre completo:</label>
                     <input type="text" id="uNombre" value="${u ? escapeHtml(u.nombre || "") : ""}" placeholder="ej: Juan Pérez" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px;">
                 </div>
+				<!-- NUEVO CAMPO DNI -->
+                <div class="field-group">
+                    <label>DNI:</label>
+                    <input type="text" id="uDni" value="${u ? escapeHtml(u.dni || "") : ""}" placeholder="ej: 48100357" maxlength="12" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px;">
+                </div>
                 <div class="field-group">
                     <label>Email:</label>
                     <input type="email" id="uEmail" value="${u ? escapeHtml(u.email || "") : ""}" placeholder="ej: jperez@midis.gob.pe" style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px;">
@@ -6144,12 +6149,18 @@ function abrirFormUsuario(username) {
         const btn = document.getElementById("uSave");
         const usuarioVal = document.getElementById("uUsuario").value.trim();
         const nombreVal = document.getElementById("uNombre").value.trim();
+		const dniVal = document.getElementById("uDni").value.trim();
         const emailVal = document.getElementById("uEmail").value.trim();
         const rolVal = document.getElementById("uRol").value;
         err.textContent = "";
 
         if (!usuarioVal || !nombreVal) { err.textContent = "Usuario y nombre son obligatorios."; return; }
         
+		 if (dniVal && !/^\d{8}$/.test(dniVal)) {
+            err.textContent = "El DNI debe tener 8 digitos";
+            return;
+        }
+		
         if (esNuevo && usuariosSistema.some(x => x.usuario.toLowerCase() === usuarioVal.toLowerCase())) {
             err.textContent = "Ese nombre de usuario ya existe.";
             btn.disabled = false;
@@ -6171,6 +6182,7 @@ function abrirFormUsuario(username) {
                 token: sessionToken,
                 usuario: usuarioVal,
                 nombre: nombreVal,
+				dni: dniVal,
                 email: emailVal,
                 rol: rolVal
             };
