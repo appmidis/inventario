@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="es-PE">
 <head>
@@ -7,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta name="description" content="Sistema de Gestión Patrimonial OGTI - MIDIS 2026">
     <meta name="referrer" content="no-referrer">
-    <title>Sistema de Gestión Patrimonial TIC - MIDIS 2026</title>
+    <title>Sistema de Gestión Patrimonial OGTI - MIDIS 2026</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e293b'/%3E%3Ctext x='50' y='68' font-size='60' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -15,6 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" onerror="window.__CHART_FAILED__=true"></script>
     <!-- NUEVO: Librería para escaneo de código de barras -->
     <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js" onerror="window.__ZXING_FAILED__=true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <style>
     :root {
         --primary: #1e293b;
@@ -1619,6 +1618,38 @@
     font-size: 11px;
 }
 
+
+.dash-grid-main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: stretch;
+}
+.dash-left-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+.dash-grid-bottom {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: stretch;
+}
+.dash-map-wrapper {
+    justify-content: space-between;
+}
+@media (max-width: 1100px) {
+    .dash-grid-main { grid-template-columns: 1fr; }
+    .dash-grid-bottom { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 720px) {
+    .dash-grid-bottom { grid-template-columns: 1fr; }
+}
+
 /* Mapa */
 .dash-map-wrapper {
     background: #fff;
@@ -1656,35 +1687,40 @@
     display: block;
 }
 .dash-map-region {
-  cursor: pointer;
-  stroke: #ffffff;
-  stroke-width: 1.8;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  transition: fill 0.16s ease, stroke 0.16s ease, stroke-width 0.16s ease;
+    cursor: pointer;
+    stroke: #ffffff;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: fill 0.16s ease, stroke 0.16s ease, stroke-width 0.16s ease;
 }
+.dash-map-region:hover,
 .dash-map-region.hovered {
-  stroke: #0f172a !important;
-  stroke-width: 3.2 !important;
+    stroke: #0f172a !important;
+    stroke-width: 3.2 !important;
 }
 .dash-map-region.selected {
-  stroke: #1e3a8a !important;
-  stroke-width: 3.5 !important;
+    stroke: #1e3a8a !important;
+    stroke-width: 3.5 !important;
+    filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.45));
 }
 .dash-map-tooltip {
     position: absolute;
-    background: rgba(15,23,42,0.95);
-    color: #fff;
-    padding: 6px 12px;
-    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.96);
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 8px;
     font-size: 11px;
     font-weight: 700;
+    line-height: 1.45;
     pointer-events: none;
     white-space: nowrap;
-    z-index: 10;
-    transform: translate(-50%, -120%);
+    z-index: 20;
+    transform: translate(-50%, -115%);
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 .dash-map-tooltip.show { opacity: 1; }
 .dash-map-legend {
@@ -1843,7 +1879,7 @@
     <main class="main-content" id="mainContent">
         <header class="header">
             <div class="header-title">
-                <h1>GESTIÓN PATRIMONIAL TIC - MIDIS <span style="font-size:10px; color:var(--accent); font-weight:700; background:var(--accent-soft); padding:2px 8px; border-radius:12px; margin-left:6px;">v2.5</span></h1>
+                <h1>GESTIÓN PATRIMONIAL OGTI - MIDIS <span style="font-size:10px; color:var(--accent); font-weight:700; background:var(--accent-soft); padding:2px 8px; border-radius:12px; margin-left:6px;">v3.0</span></h1>
                 <p>Inventario 2026: Control de Bienes, Reportes Jerárquicos y Emisión de Actas</p>
             </div>
             <div class="header-actions">
@@ -1923,11 +1959,7 @@
         <h2 class="dash-kpi-value" id="dashUsuarios">0</h2>
         <p class="dash-kpi-sub">Con bienes asignados</p>
       </div>
-      <div class="dash-kpi-card kpi-indigo">
-        <p class="dash-kpi-label">Equipos Activos</p>
-        <h2 class="dash-kpi-value" id="dashEquiposActivos">0</h2>
-        <p class="dash-kpi-sub">CPU + Monitores + Teclados</p>
-      </div>
+      
       <div class="dash-kpi-card kpi-red" onclick="abrirModalAntiguedadDash()">
         <p class="dash-kpi-label">
           <span>Antigüedad &gt; 5 Años</span>
@@ -1970,103 +2002,61 @@
       </div>
     </section>
 
-    <!-- FILA 3: Gráficos + Mapa -->
-    <section class="dash-charts-row" style="grid-template-columns: 2fr 1fr;">
-      <div class="dash-chart-box">
-        <h3>🏷️ Desglose por Marca y Tipo</h3>
-        <div class="dash-chart-canvas"><canvas id="chartMarcasDash"></canvas></div>
+    <!-- FILA 3: Marcas + Distribución por Gerencia + Mapa -->
+    <section class="dash-charts-row dash-grid-main">
+      <div class="dash-left-stack">
+        <div class="dash-chart-box">
+          <h3>🏷️ Desglose por Marca y Tipo de Equipo</h3>
+          <div class="dash-chart-canvas" style="height:250px;"><canvas id="chartMarcasDash"></canvas></div>
+        </div>
+        <div class="dash-chart-box">
+          <h3>🏢 Concentración de Bienes por Gerencia / Órgano (Top 8)</h3>
+          <div class="dash-chart-canvas" style="height:260px;"><canvas id="chartGerenciaDash"></canvas></div>
+        </div>
       </div>
       <div class="dash-map-wrapper">
         <h3>📍 Distribución por Departamento (Clic para filtrar)</h3>
-    <div class="dash-map-container" style="position: relative; width: 100%; max-width: 350px; margin: 0 auto;">
-  <div class="dash-map-tooltip" id="dashMapTooltip"></div>
-  <svg
-    id="mapaPeruSvg"
-    viewBox="0 0 460 620"
-    role="img"
-    aria-label="Mapa interactivo de departamentos del Perú"
-    style="width:100%; height:auto; display:block; filter: drop-shadow(0 4px 12px rgba(15,23,42,0.08));"
-  >
-    <g id="capaRegiones"></g>
-    <g id="capaResaltado" style="pointer-events:none;"></g>
-  </svg>
-</div>
-    <!-- Tumbes -->
-    <path class="dash-map-region" data-dpto="TUMBES" d="M58,52 L84,48 L92,68 L74,78 L54,68 Z" />
-    <!-- Piura -->
-    <path class="dash-map-region" data-dpto="PIURA" d="M54,68 L74,78 L92,68 L112,86 L96,124 L42,114 L36,92 Z" />
-    <!-- Lambayeque -->
-    <path class="dash-map-region" data-dpto="LAMBAYEQUE" d="M42,114 L96,124 L104,148 L64,154 L46,134 Z" />
-    <!-- Cajamarca -->
-    <path class="dash-map-region" data-dpto="CAJAMARCA" d="M112,86 L148,96 L154,146 L124,162 L104,148 L96,124 Z" />
-    <!-- Amazonas -->
-    <path class="dash-map-region" data-dpto="AMAZONAS" d="M148,96 L186,84 L194,138 L168,168 L154,146 Z" />
-    <!-- Loreto -->
-    <path class="dash-map-region" data-dpto="LORETO" d="M148,96 L168,26 L236,18 L296,54 L368,118 L348,186 L276,204 L224,186 L194,138 L186,84 Z" />
-    <!-- La Libertad -->
-    <path class="dash-map-region" data-dpto="LA LIBERTAD" d="M46,134 L64,154 L104,148 L124,162 L138,194 L88,202 L62,174 Z" />
-    <!-- San Martín -->
-    <path class="dash-map-region" data-dpto="SAN MARTIN" d="M154,146 L168,168 L194,138 L224,186 L192,224 L158,202 Z" />
-    <!-- Áncash -->
-    <path class="dash-map-region" data-dpto="ANCASH" d="M62,174 L88,202 L138,194 L144,248 L96,256 L78,218 Z" />
-    <!-- Huánuco -->
-    <path class="dash-map-region" data-dpto="HUANUCO" d="M138,194 L158,202 L192,224 L184,264 L144,258 L144,248 Z" />
-    <!-- Ucayali -->
-    <path class="dash-map-region" data-dpto="UCAYALI" d="M224,186 L276,204 L318,248 L286,314 L228,298 L192,224 Z" />
-    <!-- Pasco -->
-    <path class="dash-map-region" data-dpto="PASCO" d="M144,258 L184,264 L188,292 L152,296 Z" />
-    <!-- Lima -->
-    <path class="dash-map-region" data-dpto="LIMA" d="M96,256 L144,248 L144,258 L152,296 L166,328 L138,354 L112,318 L94,284 Z" />
-    <!-- Callao -->
-    <path class="dash-map-region" data-dpto="CALLAO" d="M88,284 L98,282 L99,294 L89,295 Z" />
-    <!-- Junín -->
-    <path class="dash-map-region" data-dpto="JUNIN" d="M152,296 L188,292 L228,298 L224,348 L166,328 Z" />
-    <!-- Huancavelica -->
-    <path class="dash-map-region" data-dpto="HUANCAVELICA" d="M138,354 L166,328 L194,344 L184,376 L148,374 Z" />
-    <!-- Ica -->
-    <path class="dash-map-region" data-dpto="ICA" d="M112,318 L138,354 L148,374 L166,408 L142,418 L114,368 Z" />
-    <!-- Ayacucho -->
-    <path class="dash-map-region" data-dpto="AYACUCHO" d="M166,328 L224,348 L218,414 L184,424 L166,408 L184,376 L194,344 Z" />
-    <!-- Apurímac -->
-    <path class="dash-map-region" data-dpto="APURIMAC" d="M224,348 L254,358 L248,402 L218,414 Z" />
-    <!-- Cusco -->
-    <path class="dash-map-region" data-dpto="CUSCO" d="M228,298 L286,314 L318,358 L294,418 L248,402 L254,358 L224,348 Z" />
-    <!-- Madre de Dios -->
-    <path class="dash-map-region" data-dpto="MADRE DE DIOS" d="M286,314 L318,248 L382,288 L374,356 L318,358 Z" />
-    <!-- Arequipa -->
-    <path class="dash-map-region" data-dpto="AREQUIPA" d="M142,418 L166,408 L184,424 L218,414 L248,402 L268,448 L242,482 L182,452 Z" />
-    <!-- Puno -->
-    <path class="dash-map-region" data-dpto="PUNO" d="M294,418 L318,358 L374,356 L364,448 L316,472 L268,448 L248,402 Z" />
-    <!-- Moquegua -->
-    <path class="dash-map-region" data-dpto="MOQUEGUA" d="M242,482 L268,448 L316,472 L292,502 L258,494 Z" />
-    <!-- Tacna -->
-    <path class="dash-map-region" data-dpto="TACNA" d="M258,494 L292,502 L318,528 L294,544 L268,518 Z" />
-  </svg>
-</div>
+        <div class="dash-map-container" style="position: relative; width: 100%; max-width: 360px; margin: 0 auto;">
+          <div class="dash-map-tooltip" id="dashMapTooltip"></div>
+          <div id="dashMapLoader" style="text-align:center; padding:40px 12px; color:#64748b; font-size:12px; font-weight:700;">⏳ Cargando mapa del Perú...</div>
+          <svg
+            id="mapaPeruSvg"
+            viewBox="0 0 420 560"
+            role="img"
+            aria-label="Mapa interactivo de departamentos del Perú"
+            style="width:100%; height:auto; display:none; filter: drop-shadow(0 4px 12px rgba(15,23,42,0.08));"
+          >
+            <g id="capaRegiones"></g>
+            <g id="capaResaltado" style="pointer-events:none;"></g>
+          </svg>
+        </div>
         <div class="dash-map-legend">
-          <span><i style="background:#ef4444;"></i> Mayor cantidad</span>
-          <span><i style="background:#fca5a5;"></i> Menor cantidad</span>
-          <span><i style="background:#f3f4f6;border:1px solid #cbd5e1;"></i> Sin bienes</span>
+          <span><i style="background:#ef4444;"></i> Mayor concentración</span>
+          <span><i style="background:#fca5a5;"></i> Menor concentración</span>
+          <span><i style="background:#2563eb;"></i> Seleccionado</span>
+          <span><i style="background:#f1f5f9;border:1px solid #cbd5e1;"></i> Sin bienes</span>
         </div>
       </div>
     </section>
 
-    <!-- FILA 4: Movimientos + Listas -->
-    <section class="dash-charts-row" style="grid-template-columns: 1fr 1fr 1fr;">
+    <!-- FILA 4: Donut Modalidad (Claro) + Movimientos + Top Usuarios -->
+    <section class="dash-charts-row dash-grid-bottom">
+      <div class="dash-chart-box">
+        <h3>
+          <span>📋 Composición por Modalidad Contractual</span>
+        </h3>
+        <div class="dash-chart-canvas" style="height:250px;"><canvas id="chartUbicacionDash"></canvas></div>
+      </div>
       <div class="dash-chart-box">
         <h3>📈 Movimientos (Últimos 6 meses)</h3>
-        <div class="dash-chart-canvas" style="height:240px;"><canvas id="chartMovimientosDash"></canvas></div>
+        <div class="dash-chart-canvas" style="height:250px;"><canvas id="chartMovimientosDash"></canvas></div>
       </div>
       <div class="dash-list-box">
         <h3>
           <span>👤 Top Usuarios</span>
           <span class="pill pill-blue" style="font-size:9px;">Más equipos</span>
         </h3>
-        <div class="dash-list-scroll" id="dashTopUsuariosList"></div>
-      </div>
-      <div class="dash-chart-box">
-        <h3>📍 Distribución por Ubicación</h3>
-        <div class="dash-chart-canvas" style="height:240px;"><canvas id="chartUbicacionDash"></canvas></div>
+        <div class="dash-list-scroll" style="max-height:250px;" id="dashTopUsuariosList"></div>
       </div>
     </section>
 
@@ -2655,11 +2645,35 @@ function renderListasReal(topUsuarios) {
 }
 
 /* ----- Gráficos ----- */
-window.__dashCharts = window.__dashCharts || { marcas:null, movimientos:null, ubicacion:null };
+window.__dashCharts = window.__dashCharts || { marcas:null, gerencia:null, movimientos:null, ubicacion:null };
+
+// Plugin para mostrar el total en el centro del Donut
+const centerTotalPlugin = {
+  id: "centerTotalPlugin",
+  afterDraw(chart) {
+    if (chart.config.type !== "doughnut") return;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+    const total = (chart.data.datasets[0]?.data || []).reduce((a, b) => a + b, 0);
+    const cx = (chartArea.left + chartArea.right) / 2;
+    const cy = (chartArea.top + chartArea.bottom) / 2;
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "800 20px 'JetBrains Mono', monospace";
+    ctx.fillText(total.toLocaleString("es-PE"), cx, cy - 7);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "700 9.5px 'Plus Jakarta Sans', sans-serif";
+    ctx.fillText("BIENES", cx, cy + 11);
+    ctx.restore();
+  }
+};
 
 function actualizarGraficosReal(k) {
   if (typeof Chart === "undefined") return;
 
+  // 1. Marcas apiladas por tipo
   const ctxM = document.getElementById("chartMarcasDash");
   if (ctxM) {
     if (window.__dashCharts.marcas) {
@@ -2682,13 +2696,69 @@ function actualizarGraficosReal(k) {
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } } },
+          plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, font: { size: 11, weight: "bold" } } } },
           scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
         }
       });
     }
   }
 
+  // 2. Nuevo gráfico: Concentración por Gerencia / Órgano (Top 8 barras horizontales)
+  const ctxGer = document.getElementById("chartGerenciaDash");
+  if (ctxGer && k.gerencias) {
+    const shortLabels = k.gerencias.labels.map(g => g.length > 34 ? g.slice(0, 34) + "…" : g);
+    if (window.__dashCharts.gerencia) {
+      const ch = window.__dashCharts.gerencia;
+      ch.data.labels = shortLabels;
+      ch.data.datasets[0].data = k.gerencias.data;
+      ch._fullLabels = k.gerencias.labels;
+      ch.update();
+    } else {
+      window.__dashCharts.gerencia = new Chart(ctxGer.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: shortLabels,
+          datasets: [{
+            label: "Bienes asignados",
+            data: k.gerencias.data,
+            backgroundColor: "rgba(59, 130, 246, 0.85)",
+            hoverBackgroundColor: "#2563eb",
+            borderRadius: 6,
+            barThickness: 18
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title(items) {
+                  const idx = items[0]?.dataIndex ?? 0;
+                  const full = window.__dashCharts.gerencia?._fullLabels?.[idx];
+                  return full || items[0]?.label || "";
+                },
+                label(ctx) {
+                  const val = ctx.parsed.x || 0;
+                  const pct = k.totalBienes ? ((val / k.totalBienes) * 100).toFixed(1) : "0.0";
+                  return ` ${val.toLocaleString("es-PE")} bienes (${pct}%)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { beginAtZero: true, grid: { color: "#f1f5f9" }, ticks: { font: { size: 10 } } },
+            y: { grid: { display: false }, ticks: { font: { size: 10, weight: "700" }, color: "#334155" } }
+          }
+        }
+      });
+      window.__dashCharts.gerencia._fullLabels = k.gerencias.labels;
+    }
+  }
+
+  // 3. Movimientos (Últimos 6 meses)
   const ctxMov = document.getElementById("chartMovimientosDash");
   const mov = calcularMovimientosDesdeHistorial();
   if (ctxMov) {
@@ -2710,27 +2780,75 @@ function actualizarGraficosReal(k) {
             { label: "Bajas", data: mov.bajas, borderColor: "#ef4444", borderWidth: 2, tension: 0.4 }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: "bold" } } } },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
       });
     }
   }
 
+  // 4. Donut mejorado: Composición por Modalidad Contractual (clara, pocas categorías, % y total central)
   const ctxUbi = document.getElementById("chartUbicacionDash");
   if (ctxUbi) {
+    const totalMod = (k.ubicaciones.data || []).reduce((a, b) => a + b, 0);
+    const labelsConPct = k.ubicaciones.labels.map((lbl, i) => {
+      const val = k.ubicaciones.data[i] || 0;
+      const pct = totalMod ? ((val / totalMod) * 100).toFixed(1) : "0.0";
+      return `${lbl} (${pct}%)`;
+    });
+
     if (window.__dashCharts.ubicacion) {
       const ch = window.__dashCharts.ubicacion;
-      ch.data.labels = k.ubicaciones.labels;
+      ch.data.labels = labelsConPct;
       ch.data.datasets[0].data = k.ubicaciones.data;
+      ch._rawLabels = k.ubicaciones.labels;
       ch.update();
     } else {
       window.__dashCharts.ubicacion = new Chart(ctxUbi.getContext("2d"), {
         type: "doughnut",
+        plugins: [centerTotalPlugin],
         data: {
-          labels: k.ubicaciones.labels,
-          datasets: [{ data: k.ubicaciones.data, backgroundColor: ["#3b82f6","#8b5cf6","#f59e0b","#10b981","#64748b","#f43f5e"], borderWidth: 2, borderColor: "#fff" }]
+          labels: labelsConPct,
+          datasets: [{
+            data: k.ubicaciones.data,
+            backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#64748b", "#ec4899"],
+            borderWidth: 2.5,
+            borderColor: "#ffffff",
+            hoverOffset: 6
+          }]
         },
-        options: { responsive: true, maintainAspectRatio: false, cutout: "70%", plugins: { legend: { position: "right", labels: { boxWidth: 8, font: { size: 10 } } } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "66%",
+          plugins: {
+            legend: {
+              position: "right",
+              labels: {
+                usePointStyle: true,
+                pointStyle: "circle",
+                boxWidth: 8,
+                padding: 10,
+                font: { size: 10.5, weight: "700" },
+                color: "#334155"
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label(ctx) {
+                  const val = ctx.parsed || 0;
+                  const raw = window.__dashCharts.ubicacion?._rawLabels?.[ctx.dataIndex] || ctx.label;
+                  const pct = totalMod ? ((val / totalMod) * 100).toFixed(1) : "0.0";
+                  return ` ${raw}: ${val.toLocaleString("es-PE")} bienes (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
       });
+      window.__dashCharts.ubicacion._rawLabels = k.ubicaciones.labels;
     }
   }
 }
@@ -2824,6 +2942,7 @@ function limpiarFiltrosDash() {
   });
   poblarFiltrosDash();
   refrescarDashboardReal();
+  if (typeof pintarMapaDash === 'function') pintarMapaDash();
 }
 
 
@@ -6544,46 +6663,6 @@ function abrirVentanaImpresion(contenidoHtml, estilosAdicionales = '') {
                 @page { size: A4 portrait; margin: 0; }
                 @media print { body { margin: 0; } }
                 ${estilosAdicionales}
-				
-				
-				.dash-map-region {
-  cursor: pointer;
-  stroke: #ffffff;
-  stroke-width: 1.8;
-  stroke-linejoin: round;
-  transition: fill 0.2s ease, stroke 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
-}
-.dash-map-region:hover {
-  stroke: #0f172a;
-  stroke-width: 3;
-  filter: brightness(0.92) drop-shadow(0 2px 6px rgba(15, 23, 42, 0.35));
-}
-.dash-map-region.selected {
-  stroke: #0f172a;
-  stroke-width: 3.2;
-  filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.55));
-}
-.dash-map-tooltip {
-  position: absolute;
-  background: rgba(15, 23, 42, 0.96);
-  color: #ffffff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.45;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 20;
-  transform: translate(-50%, -115%);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-.dash-map-tooltip.show {
-  opacity: 1;
-}
             </style>
         </head>
         <body>
@@ -7118,10 +7197,29 @@ function calcularKPIsReal() {
     teclados:  topMarcas.map(m => bienes.filter(b => b.marca === m && /TECLADO/i.test(b.tipo)).length)
   };
 
-  // Ubicaciones
-  const conteoUbi = {};
-  bienes.forEach(b => { conteoUbi[b.ubicacion] = (conteoUbi[b.ubicacion] || 0) + 1; });
-  const ubicaciones = { labels: Object.keys(conteoUbi), data: Object.values(conteoUbi) };
+  // Modalidad Contractual (limpia y agrupada para el Donut Chart)
+  const conteoMod = {};
+  bienes.forEach(b => {
+    const mod = b.modalidad ? b.modalidad : "SIN MODALIDAD";
+    conteoMod[mod] = (conteoMod[mod] || 0) + 1;
+  });
+  const modOrdenadas = Object.entries(conteoMod).sort((a, b) => b[1] - a[1]);
+  const ubicaciones = {
+    labels: modOrdenadas.map(([m]) => m),
+    data: modOrdenadas.map(([, c]) => c)
+  };
+
+  // Concentración por Gerencia / Órgano (Top 8 para gráfico horizontal)
+  const conteoGer = {};
+  bienes.forEach(b => {
+    const g = b.gerencia ? b.gerencia : "SIN GERENCIA";
+    conteoGer[g] = (conteoGer[g] || 0) + 1;
+  });
+  const gerOrdenadas = Object.entries(conteoGer).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const gerencias = {
+    labels: gerOrdenadas.map(([g]) => g),
+    data: gerOrdenadas.map(([, c]) => c)
+  };
 
   // Antigüedad detalle
   const equiposAntiguos = bienes
@@ -7137,7 +7235,7 @@ function calcularKPIsReal() {
   return {
     totalBienes, usuarios: usuariosUnicos, equiposActivos, antiguos,
     laptops, monitores, teclados, otros,
-    topUsuarios, marcas, ubicaciones, equiposAntiguos
+    topUsuarios, marcas, ubicaciones, gerencias, equiposAntiguos
   };
 }
 
@@ -7211,64 +7309,129 @@ function aplicarFiltroCascada(id) {
   refrescarDashboardReal();
 }
 
-const RUTAS_PERU_SVG = {
-  "TUMBES":        "M74,62 Q92,56 108,62 L114,82 L88,92 L68,80 Z",
-  "PIURA":         "M68,80 L88,92 L114,82 L136,104 L118,144 L52,134 Q42,106 68,80 Z",
-  "LAMBAYEQUE":    "M52,134 L118,144 L126,172 L76,180 L56,156 Z",
-  "CAJAMARCA":     "M136,104 L172,114 L182,174 L144,192 L126,172 L118,144 Z",
-  "AMAZONAS":      "M172,114 L214,98 L224,162 L194,198 L182,174 Z",
-  "LORETO":        "M172,114 L192,28 Q228,16 258,28 L314,62 L398,128 L428,166 L384,218 L308,236 L248,214 L224,162 L214,98 Z",
-  "SAN MARTIN":    "M182,174 L194,198 L224,162 L248,214 L214,258 L174,232 Z",
-  "LA LIBERTAD":   "M56,156 L76,180 L126,172 L144,192 L162,228 L104,238 L72,202 Z",
-  "ANCASH":        "M72,202 L104,238 L162,228 L168,292 L112,302 L88,256 Z",
-  "HUANUCO":       "M162,228 L174,232 L214,258 L206,306 L168,300 L168,292 Z",
-  "UCAYALI":       "M248,214 L308,236 L354,288 L322,364 L252,346 L214,258 Z",
-  "PASCO":         "M168,300 L206,306 L212,338 L174,344 Z",
-  "LIMA":          "M112,302 L168,292 L168,300 L174,344 L192,382 L158,412 L130,368 L108,332 Z",
-  "CALLAO":        "M100,332 L112,330 L113,344 L101,345 Z",
-  "JUNIN":         "M174,344 L212,338 L252,346 L248,404 L192,382 Z",
-  "HUANCAVELICA":  "M158,412 L192,382 L222,400 L210,438 L168,434 Z",
-  "ICA":           "M130,368 L158,412 L168,434 L190,474 L162,486 L132,426 Z",
-  "AYACUCHO":      "M192,382 L248,404 L242,482 L206,494 L190,474 L210,438 L222,400 Z",
-  "APURIMAC":      "M248,404 L282,416 L276,468 L242,482 Z",
-  "CUSCO":         "M252,346 L322,364 L358,416 L332,486 L276,468 L282,416 L248,404 Z",
-  "MADRE DE DIOS": "M322,364 L354,288 L426,336 L418,414 L358,416 Z",
-  "AREQUIPA":      "M162,486 L190,474 L206,494 L242,482 L276,468 L302,522 L272,560 L204,524 Z",
-  "PUNO":          "M332,486 L358,416 L418,414 L406,522 L352,548 L302,522 L276,468 Z",
-  "MOQUEGUA":      "M272,560 L302,522 L352,548 L326,582 L288,572 Z",
-  "TACNA":         "M288,572 L326,582 L354,608 L328,616 L298,596 Z"
-};
+/* ----- MAPA INTERACTIVO SVG (GEOJSON PERÚ) ----- */
+const GEOJSON_PERU_URL = "https://raw.githubusercontent.com/juaneladio/peru-geojson/master/peru_departamental_simple.geojson";
+const GEOJSON_PERU_EMBEBIDO = null;
+window.__geoPeruCache = window.__geoPeruCache || null;
 
-function pintarMapaDash() {
+function _normalizarNombreDptoGeo(nombre) {
+  return String(nombre || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function _construirPathsDesdeGeoJSON(geojson) {
+  const minLon = -81.45, maxLon = -68.55;
+  const minLat = -18.45, maxLat = 0.08;
+  const width = 420, height = 560, pad = 12;
+
+  const scaleX = (width - pad * 2) / (maxLon - minLon);
+  const scaleY = (height - pad * 2) / (maxLat - minLat);
+  const scale = Math.min(scaleX, scaleY);
+
+  const offsetX = (width - (maxLon - minLon) * scale) / 2;
+  const offsetY = (height - (maxLat - minLat) * scale) / 2;
+
+  const proyectar = ([lon, lat]) => {
+    const x = (offsetX + (lon - minLon) * scale).toFixed(1);
+    const y = (offsetY + (maxLat - lat) * scale).toFixed(1);
+    return `${x},${y}`;
+  };
+
+  const ringToPath = (ring) =>
+    ring.map((pt, idx) => `${idx === 0 ? "M" : "L"}${proyectar(pt)}`).join(" ") + " Z";
+
+  const mapas = {};
+  (geojson.features || []).forEach(feat => {
+    const rawName = feat.properties?.NOMBDEP || feat.properties?.NAME_1 || feat.properties?.DEPARTAM || "";
+    const dpto = _normalizarNombreDptoGeo(rawName);
+    if (!dpto || !feat.geometry) return;
+
+    const { type, coordinates } = feat.geometry;
+    let d = "";
+    if (type === "Polygon") {
+      d = coordinates.map(ringToPath).join(" ");
+    } else if (type === "MultiPolygon") {
+      d = coordinates.map(poly => poly.map(ringToPath).join(" ")).join(" ");
+    }
+    if (d) mapas[dpto] = d;
+  });
+
+  return mapas;
+}
+
+async function cargarCartografiaPeru() {
+  if (window.__geoPeruCache) return window.__geoPeruCache;
+
+  let rawData = null;
+  try {
+    const res = await fetch(GEOJSON_PERU_URL);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    rawData = await res.json();
+  } catch (err) {
+    rawData = GEOJSON_PERU_EMBEBIDO;
+  }
+
+  if (!rawData) throw new Error("No se pudo cargar la cartografía del Perú");
+
+  if (rawData.type === "Topology") {
+    if (typeof topojson === "undefined") {
+      throw new Error("Falta topojson-client para convertir TopoJSON");
+    }
+    const nombreCapa = Object.keys(rawData.objects)[0];
+    rawData = topojson.feature(rawData, rawData.objects[nombreCapa]);
+  }
+
+  window.__geoPeruCache = _construirPathsDesdeGeoJSON(rawData);
+  return window.__geoPeruCache;
+}
+
+async function pintarMapaDash() {
   const svg = document.getElementById("mapaPeruSvg");
+  const loader = document.getElementById("dashMapLoader");
   const capaRegiones = document.getElementById("capaRegiones");
   const capaResaltado = document.getElementById("capaResaltado");
   const container = svg ? svg.closest(".dash-map-container") : null;
   const tooltip = document.getElementById("dashMapTooltip");
   if (!svg || !capaRegiones || !capaResaltado || !container) return;
 
+  try {
+    await cargarCartografiaPeru();
+  } catch (err) {
+    console.error("[Mapa Perú]", err);
+    if (loader) loader.textContent = "⚠️ " + err.message;
+    return;
+  }
+
+  if (loader) loader.style.display = "none";
+  svg.style.display = "block";
+
+  const rutasReales = window.__geoPeruCache;
   const bienes = (window.inventarioGlobal || []).map(_normBien);
   const anioActual = new Date().getFullYear();
 
   const statsDpto = {};
   bienes.forEach(b => {
-    if (!b.dpto) return;
-    if (!statsDpto[b.dpto]) {
-      statsDpto[b.dpto] = { total: 0, laptops: 0, monitores: 0, antiguos: 0 };
+    const key = _normalizarNombreDptoGeo(b.dpto);
+    if (!key) return;
+    if (!statsDpto[key]) {
+      statsDpto[key] = { total: 0, laptops: 0, monitores: 0, antiguos: 0 };
     }
-    statsDpto[b.dpto].total++;
-    if (/CPU|LAPTOP|PC|COMPUTADORA/i.test(b.tipo)) statsDpto[b.dpto].laptops++;
-    if (/MONITOR/i.test(b.tipo)) statsDpto[b.dpto].monitores++;
-    if (b.anio > 0 && (anioActual - b.anio) > 5) statsDpto[b.dpto].antiguos++;
+    statsDpto[key].total++;
+    if (/CPU|LAPTOP|PC|COMPUTADORA/i.test(b.tipo)) statsDpto[key].laptops++;
+    if (/MONITOR/i.test(b.tipo)) statsDpto[key].monitores++;
+    if (b.anio > 0 && (anioActual - b.anio) > 5) statsDpto[key].antiguos++;
   });
 
   const maxCant = Math.max(1, ...Object.values(statsDpto).map(s => s.total));
-  const dptoActivo = document.getElementById("dashFiltroDpto")?.value || "";
+  const dptoActivo = _normalizarNombreDptoGeo(document.getElementById("dashFiltroDpto")?.value || "");
 
   capaRegiones.innerHTML = "";
   capaResaltado.innerHTML = "";
 
-  Object.entries(RUTAS_PERU_SVG).forEach(([dpto, dPath]) => {
+  Object.entries(rutasReales).forEach(([dpto, dPath]) => {
     const st = statsDpto[dpto] || { total: 0, laptops: 0, monitores: 0, antiguos: 0 };
     const isSel = dptoActivo === dpto;
 
@@ -7287,9 +7450,7 @@ function pintarMapaDash() {
     path.addEventListener("mouseenter", (e) => {
       path.classList.add("hovered");
       path.setAttribute("fill", isSel ? "#1d4ed8" : "#f59e0b");
-
-      // Dibujar copia resaltada encima para que el borde oscuro no quede debajo de vecinos
-      capaResaltado.innerHTML = `<path d="${dPath}" fill="none" stroke="#0f172a" stroke-width="3.2" stroke-linejoin="round" />`;
+      capaResaltado.innerHTML = `<path d="${dPath}" fill="none" stroke="#0f172a" stroke-width="2.6" stroke-linejoin="round" />`;
 
       if (tooltip) {
         tooltip.innerHTML = `
@@ -7322,7 +7483,9 @@ function pintarMapaDash() {
     path.addEventListener("click", () => {
       const sel = document.getElementById("dashFiltroDpto");
       if (sel) {
-        sel.value = (sel.value === dpto) ? "" : dpto;
+        const opcionExacta = Array.from(sel.options).find(o => _normalizarNombreDptoGeo(o.value) === dpto);
+        const nuevoVal = opcionExacta ? opcionExacta.value : dpto;
+        sel.value = (_normalizarNombreDptoGeo(sel.value) === dpto) ? "" : nuevoVal;
         poblarFiltrosDash();
         refrescarDashboardReal();
         pintarMapaDash();
@@ -7332,6 +7495,7 @@ function pintarMapaDash() {
     capaRegiones.appendChild(path);
   });
 }
+
 /* ----- Inicialización ----- */
 function _initDashV3() {
   poblarFiltrosDash();
@@ -7342,7 +7506,7 @@ function _initDashV3() {
   document.getElementById("dashFiltroGerencia")?.addEventListener("change", () => aplicarFiltroCascada("dashFiltroGerencia"));
   document.getElementById("dashFiltroArea")?.addEventListener("change", () => aplicarFiltroCascada("dashFiltroArea"));
   document.getElementById("dashFiltroSubArea")?.addEventListener("change", () => refrescarDashboardReal());
-  document.getElementById("dashFiltroDpto")?.addEventListener("change", () => refrescarDashboardReal());
+  document.getElementById("dashFiltroDpto")?.addEventListener("change", () => { refrescarDashboardReal(); pintarMapaDash(); });
   document.getElementById("dashFiltroModalidad")?.addEventListener("change", () => refrescarDashboardReal());
 }
 
